@@ -1,0 +1,19 @@
+# The USA is in Big Trouble
+
+### 21 Mar, 2025 Via Joe Daiker, on a platform I no longer mention.
+
+President George W. Bush's chief speechwriter, Michael Gerson, has a message for people who are excusing President Trump's racism:
+
+"I had fully intended to ignore President Trump’s latest round of racially charged taunts against an African American elected official, and an African American activist, and an African American journalist and a whole city with a lot of African Americans in it. I had every intention of walking past Trump’s latest outrages and writing about the self-destructive squabbling of the Democratic presidential field, which has chosen to shame former vice president Joe Biden for the sin of being an electable, moderate liberal.
+
+But I made the mistake of pulling James Cone’s 'The Cross and the Lynching Tree' off my shelf — a book designed to shatter convenient complacency. Cone recounts the case of a white mob in Valdosta, Ga., in 1918 that lynched an innocent man named Haynes Turner. Turner’s enraged wife, Mary, promised justice for the killers. The sheriff responded by arresting her and then turning her over to the mob, which included women and children. According to one source, Mary was 'stripped, hung upside down by the ankles, soaked with gasoline, and roasted to death. In the midst of this torment, a white man opened her swollen belly with a hunting knife and her infant fell to the ground and was stomped to death.'
+
+God help us. It is hard to write the words. This evil — the evil of white supremacy, resulting in dehumanization, inhumanity and murder — is the worst stain, the greatest crime, of U.S. history. It is the thing that nearly broke the nation. It is the thing that proved generations of Christians to be vicious hypocrites. It is the thing that turned normal people into moral monsters, capable of burning a grieving widow to death and killing her child.
+When the president of the United States plays with that fire or takes that beast out for a walk, it is not just another political event, not just a normal day in campaign 2020. It is a cause for shame. It is the violation of martyrs’ graves. It is obscene graffiti on the Lincoln Memorial. It is, in the eyes of history, the betrayal — the re-betrayal — of Haynes and Mary Turner and their child. And all of this is being done by an ignorant and arrogant narcissist reviving racist tropes for political gain, indifferent to the wreckage he is leaving, the wounds he is ripping open.
+
+Like, I suspect, many others, I am finding it hard to look at resurgent racism as just one in a series of presidential offenses or another in a series of Republican errors. Racism is not just another wrong. The Antietam battlefield is not just another plot of ground. The Edmund Pettus Bridge is not just another bridge. The balcony outside Room 306 at the Lorraine Motel is not just another balcony. As U.S. h istory hallows some causes, it magnifies some crimes.
+
+What does all this mean politically? It means that Trump’s divisiveness is getting worse, not better. He makes racist comments, appeals to racist sentiments and inflames racist passions. The rationalization that he is not, deep down in his heart, really a racist is meaningless. Trump’s continued offenses mean that a large portion of his political base is energized by racist tropes and the language of white grievance. And it means — whatever their intent — that those who play down, or excuse, or try to walk past these offenses are enablers.
+Some political choices are not just stupid or crude. They represent the return of our country’s cruelest, most dangerous passion. Such racism indicts Trump. Treating racism as a typical or minor matter indicts us."
+
+#### — Michael Gerson

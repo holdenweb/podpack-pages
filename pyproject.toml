@@ -1,0 +1,37 @@
+[project]
+name = "podpack-pages"
+version = "0.2.0"
+description = "Content pages for podpack sites: one name space, Markdown first, HTML second"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "flask>=3.0",
+    "markdown>=3.5.2",
+    "python-markdown-math>=0.8",
+]
+
+[[project.authors]]
+name = "Steve Holden"
+email = "steve@holdenweb.com"
+
+[build-system]
+requires = ["uv_build>=0.8.4,<0.9.0"]
+build-backend = "uv_build"
+
+# podpack is deliberately absent from `dependencies`: a real dependency's
+# [tool.uv.sources] entry travels with the distribution, so a site whose own
+# podpack source differs could never lock. A dependency group is dev-only
+# metadata and constrains nobody. See writing-an-app.md rule 1.
+[dependency-groups]
+dev = [
+    "podpack",
+    "pytest>=8.0",
+    "mypy>=1.11",
+    "types-markdown>=3.10.2.20260712",
+]
+
+[tool.uv.sources]
+podpack = { path = "/Users/sholden/sites/podpack", editable = true }
+
+[tool.mypy]
+files = ["src", "tests"]
