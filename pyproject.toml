@@ -31,7 +31,11 @@ dev = [
 ]
 
 [tool.uv.sources]
-podpack = { path = "/Users/sholden/sites/podpack", editable = true }
+# The published repository, not a path. An editable pointer at an absolute
+# home directory resolved on exactly one machine and put that path into a
+# committed lockfile, so this package could not be locked, built or tested
+# anywhere else -- including CI, which is now what publishes it.
+podpack = { git = "https://github.com/holdenweb/podpack.git" }
 
 [tool.mypy]
 files = ["src", "tests"]
