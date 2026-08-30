@@ -28,7 +28,16 @@ first install, so editing a page on the host changes the site with no rebuild.
 | Route | What it does |
 | --- | --- |
 | `/pages/<name>` | serve the page, Markdown space first |
+| `/pages/<dir>/` | serve the directory's `index` page |
+| `/pages/` | serve the top-level `index` page |
 | `/pages/asset/<path>` | serve an asset (image, stylesheet) belonging to a page |
+
+A name that is a directory in either tree serves the directory's `index`
+page, resolved like any other name: `index.md` first, then `index.html`. The
+canonical address is the slash form; the bare form redirects to it (308) so
+that relative references inside an index page resolve within its directory.
+Mounted at the site root, this puts the top-level `index` page at `/` — the
+way an app supplies a site's front page (podpack ADR-0024).
 
 Relative `src`/`href` references inside HTML pages are rewritten server-side
 through `url_for("pages.asset", ...)`, so they follow the app wherever the

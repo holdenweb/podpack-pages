@@ -51,6 +51,15 @@ def find_page(root: Path, name: str) -> tuple[str, str]:
     raise ContentNotFound(name)
 
 
+def is_page_dir(root: Path, name: str) -> bool:
+    """True when `name` is a directory in either content tree."""
+    try:
+        _check_relative(name)
+    except ContentNotFound:
+        return False
+    return any((root / tree / name).is_dir() for tree in (MD_TREE, HTML_TREE))
+
+
 def find_asset(root: Path, path: str) -> tuple[bytes, str]:
     """Resolve an asset the same way pages resolve: Markdown tree first."""
     _check_relative(path)

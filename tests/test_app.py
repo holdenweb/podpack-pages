@@ -60,6 +60,74 @@ def test_a_missing_page_is_404(app: Flask) -> None:
     assert app.test_client().get("/pages/no-such-page").status_code == 404
 
 
+def test_a_directory_address_serves_its_index_page(app: Flask, content: Path) -> None:
+    sub = content / "md-pages" / "guide"
+    sub.mkdir()
+    (sub / "index.md").write_text("# Guide\n\nthe guide index")
+    body = app.test_client().get("/pages/guide/").get_data(as_text=True)
+    assert "the guide index" in body
+
+
+def test_an_html_index_answers_when_no_markdown_shadows_it(app: Flask, content: Path) -> None:
+    sub = content / "html-pages" / "docs"
+    sub.mkdir()
+    (sub / "index.html").write_text("<p>docs index</p>")
+    body = app.test_client().get("/pages/docs/").get_data(as_text=True)
+    assert "docs index" in body
+
+
+def test_a_bare_directory_address_redirects_to_its_slash_form(app: Flask, content: Path) -> None:
+    """The canonical address ends in a slash, so a page's relative references
+    resolve inside its own directory."""
+    sub = content / "md-pages" / "guide"
+    sub.mkdir()
+    (sub / "index.md").write_text("body")
+    response = app.test_client().get("/pages/guide")
+    assert response.status_code == 308
+    assert response.headers["Location"].endswith("/pages/guide/")
+
+
+def test_the_directory_redirect_follows_a_remount(site: SiteFactory) -> None:
+    app = site(
+        host_config={
+            "site": {
+                "name": "test site",
+                "environment": "test",
+                "apps": ["podpack_pages"],
+                "mounts": {"pages": "/writing"},
+            }
+        }
+    )
+    content = app.extensions["podpack"].data_root / "pages"
+    sub = content / "md-pages" / "guide"
+    sub.mkdir()
+    (sub / "index.md").write_text("body")
+    response = app.test_client().get("/writing/guide")
+    assert response.status_code == 308
+    assert response.headers["Location"].endswith("/writing/guide/")
+
+
+def test_the_apps_root_serves_the_top_level_index_page(app: Flask, content: Path) -> None:
+    (content / "md-pages" / "index.md").write_text("# Home\n\nfront page body")
+    body = app.test_client().get("/pages/").get_data(as_text=True)
+    assert "front page body" in body
+
+
+def test_a_directory_without_an_index_is_404(app: Flask, content: Path) -> None:
+    (content / "md-pages" / "empty").mkdir()
+    client = app.test_client()
+    assert client.get("/pages/empty/").status_code == 404
+    assert client.get("/pages/empty", follow_redirects=True).status_code == 404
+
+
+def test_an_html_index_rewrites_assets_relative_to_its_directory(app: Flask, content: Path) -> None:
+    sub = content / "html-pages" / "docs"
+    sub.mkdir()
+    (sub / "index.html").write_text('<img src="pic.png">')
+    body = app.test_client().get("/pages/docs/").get_data(as_text=True)
+    assert 'src="/pages/asset/docs/pic.png"' in body
+
+
 def test_a_leading_heading_becomes_the_title(app: Flask, content: Path) -> None:
     (content / "md-pages" / "titled.md").write_text("# The Real Title\n\nbody here")
     body = app.test_client().get("/pages/titled").get_data(as_text=True)
@@ -116,7 +184,14 @@ def test_assets_are_served_with_a_content_type(app: Flask, content: Path) -> Non
 def test_a_traversal_cannot_escape_the_content_trees(app: Flask, tmp_path: Path) -> None:
     (tmp_path / "secret.txt").write_text("secret")
     client = app.test_client()
-    for probe in ("/pages/asset/..%2f..%2fsecret.txt", "/pages/..%2f..%2fsecret.txt"):
+    # The last two probe the directory handling: neither the index lookup nor
+    # the trailing-slash redirect may resolve a name that steps out of a tree.
+    for probe in (
+        "/pages/asset/..%2f..%2fsecret.txt",
+        "/pages/..%2f..%2fsecret.txt",
+        "/pages/..%2f",
+        "/pages/..%2fdata",
+    ):
         response = client.get(probe)
         assert response.status_code == 404
         assert b"secret" not in response.data

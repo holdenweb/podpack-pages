@@ -5,13 +5,19 @@ import re
 from logging import getLogger
 
 import markdown
-from flask import Blueprint, abort, render_template, url_for, Response
+from flask import Blueprint, abort, redirect, render_template, url_for, Response
 from flask.typing import ResponseReturnValue
 
 from podpack import app_config
 from podpack.paths import data_dir
 
-from .content import ContentNotFound, find_asset, find_page, rewrite_asset_urls
+from .content import (
+    ContentNotFound,
+    find_asset,
+    find_page,
+    is_page_dir,
+    rewrite_asset_urls,
+)
 
 logger = getLogger(__name__)
 
@@ -25,12 +31,23 @@ _md = markdown.Markdown(extensions=["mdx_math", "codehilite"])
 _HEADING = re.compile(r"^(#+)\s+(.+)")
 
 
+@blueprint.route("/", defaults={"name": ""})
 @blueprint.route("/<path:name>")
 def page(name: str) -> ResponseReturnValue:
-    """One address per page, whatever format it is stored in."""
+    """One address per page, whatever format it is stored in.
+
+    A directory's address is its slash form -- the app's root included -- and
+    serves the directory's `index` page. The bare form redirects there rather
+    than serving, so relative references inside an index page resolve within
+    its directory.
+    """
+    if not name or name.endswith("/"):
+        name += "index"
     try:
         kind, raw = find_page(data_dir(), name)
     except ContentNotFound:
+        if is_page_dir(data_dir(), name):
+            return redirect(url_for("pages.page", name=f"{name}/"), code=308)
         abort(404)
     if kind == "markdown":
         return _render_markdown(raw)
