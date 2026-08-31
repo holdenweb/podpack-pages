@@ -748,7 +748,7 @@ dependencies = [
 
 [[package]]
 name = "podpack-pages"
-version = "0.2.0"
+version = "0.2.1"
 source = { editable = "." }
 dependencies = [
     { name = "flask" },

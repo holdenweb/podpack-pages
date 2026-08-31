@@ -218,3 +218,13 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml*.wp?
+
+# Wing private task files (not committed)
+.TASKS/
+
+# Wing-generated, machine-specific (absolute paths to this install)
+.claude/
+.mcp.json
+.mcp.json.old
+.mcp.metadata.json
+*.wp?
