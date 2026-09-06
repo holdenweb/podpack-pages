@@ -1,0 +1,18 @@
+{#- The shipped default for the blog index: every post, newest first, under a
+    heading per year. A site restyles it by shipping templates/blog/blog-index.html
+    (this app only) or templates/podpack_pages/blog-index.html (every blog-kind
+    app). In scope: title, years -- a list of (year, posts) pairs, newest first.
+    Links go through url_for so they follow the app wherever the site mounts it. -#}
+{% extends "base.html" %}
+{% block content %}
+{%- for year, posts in years %}
+<h2>{{ year or "Undated" }}</h2>
+<ul class="post-list">
+{%- for post in posts %}
+  <li>{% if post.published_date %}<time datetime="{{ post.published_date.isoformat() }}">{{ post.published_date.strftime("%d %b") }}</time> {% endif %}<a href="{{ url_for('.page', path=post.path) }}">{{ post.title }}</a></li>
+{%- endfor %}
+</ul>
+{%- else %}
+<p>No posts yet.</p>
+{%- endfor %}
+{% endblock %}

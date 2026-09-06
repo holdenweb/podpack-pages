@@ -748,10 +748,11 @@ dependencies = [
 
 [[package]]
 name = "podpack-pages"
-version = "0.2.1"
+version = "0.3.0rc1"
 source = { editable = "." }
 dependencies = [
     { name = "flask" },
+    { name = "jinja2" },
     { name = "markdown" },
     { name = "python-markdown-math" },
 ]
@@ -767,6 +768,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "flask", specifier = ">=3.0" },
+    { name = "jinja2", specifier = ">=3.1" },
     { name = "markdown", specifier = ">=3.5.2" },
     { name = "python-markdown-math", specifier = ">=0.8" },
 ]

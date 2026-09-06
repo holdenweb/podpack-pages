@@ -1,11 +1,14 @@
 [project]
 name = "podpack-pages"
-version = "0.2.2"
+version = "0.3.0rc1"
 description = "Content pages for podpack sites: one name space, Markdown first, HTML second"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "flask>=3.0",
+    # Imported directly by the blog app (its publish environment), so declared
+    # rather than borrowed from flask's own dependency on it.
+    "jinja2>=3.1",
     "markdown>=3.5.2",
     "python-markdown-math>=0.8",
 ]
@@ -39,3 +42,10 @@ podpack = { git = "https://github.com/holdenweb/podpack.git" }
 
 [tool.mypy]
 files = ["src", "tests"]
+
+[tool.pytest.ini_options]
+# Where the tests are, so a bare `pytest` does not walk the whole tree -- and
+# so that Wing's test auto-detection, which reads this file, knows the project
+# uses pytest rather than loading test functions unittest-style without their
+# fixtures.
+testpaths = ["tests"]

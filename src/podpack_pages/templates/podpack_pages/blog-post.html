@@ -1,0 +1,15 @@
+{#- The shipped default for a blog post. A site restyles it by shipping
+    templates/blog/blog-post.html (this app only) or
+    templates/podpack_pages/blog-post.html (every blog-kind app). In scope:
+    title, content (the published fragment), post (path, title, published_date,
+    updated, categories, original_url). -#}
+{% extends "base.html" %}
+{% block content %}
+{%- if post.published_date or post.categories %}
+<p class="post-meta">
+  {%- if post.published_date %}<time datetime="{{ post.published_date.isoformat() }}">{{ post.published_date.day }} {{ post.published_date.strftime("%B %Y") }}</time>{% endif %}
+  {%- if post.categories %} &middot; {{ post.categories | join(", ") }}{% endif %}
+</p>
+{%- endif %}
+{{ content | safe }}
+{% endblock %}

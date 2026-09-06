@@ -1,0 +1,17 @@
+{
+  "generated_at": "2026-09-05T00:00:00",
+  "root_placeholder": "${{{ROOT}}}",
+  "posts": [
+    {
+      "post_id": "podpack-pages-sample",
+      "title": "A sample post, shipped with podpack-pages",
+      "path": "posts/2026/01/welcome.html",
+      "original_url": null,
+      "published": "2026-01-01T00:00:00",
+      "updated": null,
+      "categories": ["podpack"],
+      "comment_count": 0,
+      "thumbnail_url": null
+    }
+  ]
+}

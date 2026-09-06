@@ -4,9 +4,9 @@ from pathlib import Path
 
 from flask import Flask
 
-from conftest import SiteFactory
+from conftest import ALL_CONFIG, SiteFactory
 
-from podpack_pages import site_app
+from podpack_pages import chrome, site_app
 from podpack_pages.content import rewrite_asset_urls
 
 
@@ -200,3 +200,86 @@ def test_a_traversal_cannot_escape_the_content_trees(app: Flask, tmp_path: Path)
 def test_it_reads_the_host_copy_not_the_packaged_one(app: Flask, content: Path) -> None:
     (content / "md-pages" / "test.md").write_text("# Edited\n\nedited on the host")
     assert "edited on the host" in app.test_client().get("/pages/test").get_data(as_text=True)
+
+
+# HTML pages carry a title now: declared on the first line, or the app's default.
+
+
+def test_an_html_page_gets_the_apps_default_title(app: Flask, content: Path) -> None:
+    """It used to pass none, which holdenweb's chrome rendered as an empty <h1>."""
+    (content / "html-pages" / "plain.html").write_text("<p>just html</p>")
+    body = app.test_client().get("/pages/plain").get_data(as_text=True)
+    assert "A test-site note" in body  # [apps.pages] default_title in conftest
+
+
+def test_a_leading_title_comment_names_an_html_page(app: Flask, content: Path) -> None:
+    """The Markdown heading rule's twin: the first line names the page and leaves
+    the body, so a generator can title each page without knowing the chrome."""
+    (content / "html-pages" / "named.html").write_text(
+        "<!-- title: The Real Title -->\n<p>body here</p>"
+    )
+    body = app.test_client().get("/pages/named").get_data(as_text=True)
+    assert "The Real Title" in body
+    assert "body here" in body
+    assert "<!-- title" not in body
+    assert "A test-site note" not in body
+
+
+# One distribution, three apps: each an ordinary podpack app in its own right.
+
+
+def test_the_three_apps_install_side_by_side(family: Flask) -> None:
+    state = family.extensions["podpack"]
+    assert state.installed_from == {
+        "pages": "podpack_pages",
+        "pybooks": "podpack_pages.pybooks",
+        "blog": "podpack_pages.blog",
+    }
+    assert sorted(p.name for p in state.data_root.iterdir()) == ["blog", "pages", "pybooks"]
+    for name in ("pages", "pybooks", "blog"):
+        assert (state.log_root / name / f"{name}.log").is_file()
+    # Nav entries in installation order; pages contributes none, as before.
+    assert [s.endpoint for s in state.nav] == ["pybooks.page", "blog.index"]
+    body = family.test_client().get("/pages/test").get_data(as_text=True)
+    assert body.index('href="/pybooks/"') < body.index('href="/blog/"')
+
+
+def test_each_app_installs_alone(site: SiteFactory) -> None:
+    """A site may enable any one of them without the others (podpack ADR-0004)."""
+    for import_name, root in (
+        ("podpack_pages", "/pages/test"),
+        ("podpack_pages.pybooks", "/pybooks/"),
+        ("podpack_pages.blog", "/blog/"),
+    ):
+        app = site(
+            host_config={"site": {"name": "test site", "environment": "test", "apps": [import_name]}}
+        )
+        assert app.test_client().get(root).status_code == 200, import_name
+
+
+def test_a_site_overrides_one_apps_templates_without_touching_the_others(
+    site: SiteFactory,
+) -> None:
+    """Templates resolve under the app's own name before the shipped default
+    (chrome.render), so a site's templates/pybooks/html.html restyles pybooks
+    alone. tests/testsite ships exactly that file."""
+    app = site(host_config=ALL_CONFIG, site_package="testsite")
+    data = app.extensions["podpack"].data_root
+    for name in ("pages", "pybooks"):
+        (data / name / "html-pages" / "x.html").write_text("<p>x</p>")
+    client = app.test_client()
+    assert "SITE OVERRIDE FOR PYBOOKS" in client.get("/pybooks/x").get_data(as_text=True)
+    assert "SITE OVERRIDE FOR PYBOOKS" not in client.get("/pages/x").get_data(as_text=True)
+
+
+def test_the_default_templates_come_from_the_blueprints_own_package(site: SiteFactory) -> None:
+    """chrome is not tied to this package: a blueprint built for another package
+    falls back to that package's templates/<its name>/, so a distribution of its
+    own can depend on podpack-pages and use chrome unchanged. tests/testsite
+    ships templates/testsite/plain.html to stand in for such a package."""
+    stranger = chrome.blueprint("stranger", "testsite")
+    stranger.add_url_rule("/", "index", lambda: chrome.render("plain.html", title="t"))
+    app = site()
+    app.register_blueprint(stranger, url_prefix="/stranger")
+    body = app.test_client().get("/stranger/").get_data(as_text=True)
+    assert "DEFAULT FROM THE TESTSITE PACKAGE" in body
