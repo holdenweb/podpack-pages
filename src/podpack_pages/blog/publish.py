@@ -7,11 +7,12 @@ roots through Jinja. All of Jinja's delimiters are moved to distinctive
 sentinels, so shell, template and code samples in post bodies pass through
 untouched (sitescraper ADR-0009; the image placeholder is ADR-0010).
 
-The reference is `make_publish_env` / `render_fragment` in sitescraper's
-`blogscraper/export.py`. It is copied rather than imported because that
-package carries MongoDB, BeautifulSoup and requests for the sake of eight
-lines. The strings below must therefore match that file: `tests/test_publish.py`
-pins them, and the blog refuses a manifest whose `root_placeholder` disagrees.
+The reference is sitescraper's `blogscraper/publish.py`, which holds the
+same constants and `render_fragment` and nothing else, so that consumers can
+copy it rather than depend on the scraper (whose other modules carry MongoDB,
+BeautifulSoup and requests). The strings below must match that file:
+`tests/test_publish.py` pins them on both sides, and the blog refuses a
+manifest whose `root_placeholder` disagrees.
 """
 
 from __future__ import annotations

@@ -68,7 +68,8 @@ don't create one.
 ### `pybooks`: the Python course books
 
 `pybooks` *is* the pages app installed a second time under another name
-(`src/podpack_pages/pybooks/__init__.py` is six lines). Its `html-pages/`
+(`src/podpack_pages/pybooks/__init__.py` is two imports and one `PagesApp(...)`
+construction). Its `html-pages/`
 tree is where the orpy repository's `build.py --fragments` output is copied,
 verbatim: `index.html`, `python1/`..`python4/` with their `images/`, and
 `common/course.css|js`. Those fragments were shaped to this app's behaviour
@@ -125,8 +126,8 @@ no regeneration. `IMAGE_ROOT` is `[apps.blog] image_root` if the site sets
 one, else `ROOT`. The eight-line publish step is restated in
 `src/podpack_pages/blog/publish.py` rather than imported, because
 `blogscraper` carries MongoDB, BeautifulSoup and requests; the delimiter
-strings there must match sitescraper's `export.py`, `tests/test_publish.py`
-pins them, and a manifest whose `root_placeholder` disagrees is refused.
+strings there must match sitescraper's `blogscraper/publish.py`,
+`tests/test_publish.py` pins them on both sides, and a manifest whose `root_placeholder` disagrees is refused.
 
 A manifest that is missing, unparseable, or lists a path that steps outside
 the tree makes the **whole blog answer 503**, with one ERROR line in
