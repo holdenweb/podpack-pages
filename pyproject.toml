@@ -1,6 +1,6 @@
 [project]
 name = "podpack-pages"
-version = "0.3.0"
+version = "0.3.1"
 description = "Content pages for podpack sites: one name space, Markdown first, HTML second"
 readme = "README.md"
 requires-python = ">=3.12"

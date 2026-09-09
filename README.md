@@ -183,6 +183,106 @@ APP=blog    TREE=export     ops/refresh-content.sh <the sitescraper build/> --mi
 
 No restart either time.
 
+## Adding a content set
+
+Every content set on a site is its own podpack app, and one distribution may
+ship several (podpack ADR-0038, "A distribution can ship more than one app"):
+the registry keys everything off the blueprint's name, so the apps here are
+enabled, mounted and configured independently, exactly as apps from separate
+distributions are. Adding a content set is therefore adding an app, never
+extending an existing one.
+
+### The common case: another pages-kind app
+
+If the new content is a tree of Markdown and HTML pages -- hand-written, or
+generated the way orpy generates the course books -- it is the pages kind,
+and the whole app is a subpackage exposing a `PagesApp` under a new name.
+`src/podpack_pages/pybooks/__init__.py` is the template:
+
+```python
+# src/podpack_pages/<name>/__init__.py
+from podpack import Section
+
+from ..views import PagesApp, make_blueprint
+
+site_app = PagesApp(
+    blueprint=make_blueprint("<name>"),
+    url_prefix="/<name>",
+    nav=(Section("<Label>", "<name>.page"),),   # or nav=() to stay out of the nav
+)
+```
+
+Everything else follows from the name: the data directory
+`<data root>/<name>/`, the config section `[apps.<name>]`, the log file, the
+template namespace `templates/<name>/` and the `/_status` entry. Nothing in
+`views.py`, `content.py` or `chrome.py` changes. Three rules:
+
+- **The name is the blueprint's, typed once.** It must not collide with any
+  app a site might install beside it -- `pages`, `pybooks`, `blog`, the site's
+  own -- because podpack refuses to boot two apps of one name.
+- **Ship a placeholder**, `src/podpack_pages/<name>/data/html-pages/index.html`,
+  saying what the app is and where its real tree goes. podpack seeds it into
+  the app's empty directory on first install (ADR-0008), so a fresh site
+  serves `/<name>/` with a 200 and the mount, the nav entry and `/_status`
+  can all be checked before any content is copied. Make it HTML, at
+  `html-pages/index.html`: that is the path a real tree's own landing page
+  overwrites, whereas a Markdown placeholder would shadow that landing page
+  for ever. Seeding happens once, so a later change to the placeholder never
+  reaches a host that already has the directory.
+- **The nav label is a fixed string.** A `Section` is frozen at import time
+  and podpack gives a site no lever to relabel it (ADR-0022).
+
+Add a test file on the pattern of `tests/test_pybooks.py`: the app names
+itself after its blueprint, installs by its import name, seeds its own
+placeholder and not another app's, reads its own `[apps.<name>]`, contributes
+a nav entry that resolves to its root, and follows a `[site.mounts]` remount.
+
+The same construction works from a distribution of its own: a package that
+depends on `podpack-pages` builds its `site_app` from
+`podpack_pages.views.PagesApp` and `make_blueprint` exactly as above and
+ships its own `data/`. Verified by installing such a package beside the
+three apps here.
+
+### When to build a new kind instead
+
+Reuse `PagesApp` when the content is pages: files addressed by name, one per
+URL, that the site's chrome can wrap as they are. Build a new kind -- a
+`views.py` of its own and, if it has anything to report, a `SiteApp`
+subclass -- when the content has a contract of its own: addresses that are
+not file names, a manifest or index that decides what is served and how,
+titles that come from somewhere other than the file, placeholders to fill at
+serve time, or a health question an operator would ask ("is the manifest
+readable?"). `src/podpack_pages/blog/` is the worked example: `views.py`
+routes, `manifest.py` reads the export's index, `publish.py` restates the
+producer's contract, and `BlogApp` answers `/healthz` and `/_status`. What a
+kind shares with the others is the toolbox, not the views:
+`chrome.blueprint()` and `chrome.render()` for templates,
+`content.check_relative()` and `content.find_asset()` for reading a tree
+safely. A new kind's default templates go under `templates/podpack_pages/`
+beside the others, named for the kind.
+
+### What the site then does
+
+1. Add the import name, `podpack_pages.<name>`, to `[site] apps`, in the
+   position its nav entry should take: nav order is installation order.
+2. Optionally set `[apps.<name>]` keys (every one has a default) and, if the
+   app asks to mount somewhere the site does not want it,
+   `[site.mounts] <name> = "/elsewhere"`.
+3. Release and re-pin. A site depends on this distribution by version or
+   commit, so a new app reaches it only through a new release here and a
+   re-lock there.
+4. Copy the content into `<data root>/<name>/html-pages/`, or whatever tree
+   the kind reads. On a site running podpack's substrate that is the site's
+   refresh script with the app and tree named; holdenweb.com wraps its
+   `ops/refresh-content.sh` and `ops/push-content.sh` in one `just` recipe
+   that takes them as arguments:
+
+```
+just content staging <source-dir> <name> html-pages --mirror
+```
+
+No restart, for any kind: every app here reads the disk on each request.
+
 ## Templates
 
 Every page extends the site's `base.html` and fills `{% block content %}`,
