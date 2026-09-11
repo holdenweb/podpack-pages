@@ -6,7 +6,7 @@
 {% extends "base.html" %}
 {% block content %}
 {%- for year, posts in years %}
-<h2>{{ year or "Undated" }}</h2>
+<h2 id="{{ year or 'undated' }}">{{ year or "Undated" }}</h2>
 <ul class="post-list">
 {%- for post in posts %}
   <li>{% if post.published_date %}<time datetime="{{ post.published_date.isoformat() }}">{{ post.published_date.strftime("%d %b") }}</time> {% endif %}<a href="{{ url_for('.page', path=post.path) }}">{{ post.title }}</a></li>

@@ -32,8 +32,14 @@ from .content import (
     find_asset,
     find_page,
     is_page_dir,
+    list_siblings,
     rewrite_asset_urls,
 )
+
+# The shape a second-level nav is passed to the chrome in, shared by every app
+# in this distribution and matched by the site's subnav template: a list of
+# groups, each an optional heading over items that are {label, href, current}.
+Subnav = list[dict[str, Any]]
 
 logger = getLogger(__name__)
 
@@ -98,9 +104,10 @@ def page(name: str) -> ResponseReturnValue:
         if is_page_dir(data_dir(), name):
             return redirect(url_for(".page", name=f"{name}/"), code=308)
         abort(404)
+    subnav = _pages_subnav(name)
     if kind == "markdown":
-        return _render_markdown(raw)
-    return _render_html(raw, name)
+        return _render_markdown(raw, subnav)
+    return _render_html(raw, name, subnav)
 
 
 def asset(path: str) -> ResponseReturnValue:
@@ -119,27 +126,59 @@ def _default_title() -> str:
     return str(app_config().get("default_title", FALLBACK_TITLE))
 
 
-def _render_markdown(raw: str) -> ResponseReturnValue:
+def _title_from_first(kind: str, first: str) -> str | None:
+    """A page's own title from its first line, or None to fall back.
+
+    Markdown: a leading `# heading`. HTML: a `<!-- title: ... -->` comment. The
+    same rule the renderers strip from the body, reused to title siblings in
+    the section nav without reading a whole file.
+    """
+    if kind == "markdown":
+        match = _HEADING.match(first)
+        return match.group(2) if match else None
+    match = _TITLE_COMMENT.match(first)
+    return match.group("title") if (match and match.group("title")) else None
+
+
+def _pages_subnav(name: str) -> Subnav | None:
+    """A section nav of the current directory's pages, for an app that asks.
+
+    Opt-in via `[apps.<name>] subnav = true`, because the pages-kind views are
+    shared: `pybooks` carries orpy's own in-page course nav and wants no second
+    one. Absent when the app has not asked, or a directory holds only the page
+    being served (a lone entry is not a menu).
+    """
+    if not app_config().get("subnav"):
+        return None
+    siblings = list_siblings(data_dir(), name)
+    if len(siblings) < 2:
+        return None
+    items = [
+        {
+            "label": _title_from_first(kind, first) or _default_title(),
+            "href": url_for(".page", name=page_name),
+            "current": page_name == name,
+        }
+        for page_name, kind, first in siblings
+    ]
+    return [{"heading": None, "items": items}]
+
+
+def _render_markdown(raw: str, subnav: Subnav | None = None) -> ResponseReturnValue:
     """A leading heading becomes the page title and leaves the body."""
     first, _, rest = raw.partition("\n")
-    match = _HEADING.match(first)
-    if match:
-        title, body = match.group(2), rest
-    else:
-        title, body = _default_title(), raw
+    found = _title_from_first("markdown", first)
+    title, body = (found, rest) if found else (_default_title(), raw)
     _md.reset()
-    return chrome.render("markdown.html", content=_md.convert(body), title=title)
+    return chrome.render("markdown.html", content=_md.convert(body), title=title, subnav=subnav)
 
 
-def _render_html(raw: str, name: str) -> ResponseReturnValue:
+def _render_html(raw: str, name: str, subnav: Subnav | None = None) -> ResponseReturnValue:
     """A leading title comment names the page; relative asset references are
     rewritten to this app's asset route."""
     first, _, rest = raw.partition("\n")
-    match = _TITLE_COMMENT.match(first)
-    if match and match.group("title"):
-        title, body = match.group("title"), rest
-    else:
-        title, body = _default_title(), raw
+    found = _title_from_first("html", first)
+    title, body = (found, rest) if found else (_default_title(), raw)
     page_dir = posixpath.dirname(name)
     body = rewrite_asset_urls(body, page_dir, lambda target: url_for(".asset", path=target))
-    return chrome.render("html.html", content=body, title=title)
+    return chrome.render("html.html", content=body, title=title, subnav=subnav)

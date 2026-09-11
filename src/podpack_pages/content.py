@@ -74,6 +74,37 @@ def is_page_dir(root: Path, name: str) -> bool:
     return any((root / tree / name).is_dir() for tree in (MD_TREE, HTML_TREE))
 
 
+def list_siblings(root: Path, name: str) -> list[tuple[str, str, str]]:
+    """The pages sharing `name`'s directory, for a section (second-level) nav.
+
+    Returns `(page_name, kind, first_line)` per page -- lexical by page_name,
+    Markdown shadowing HTML at the same name, the resolution order `find_page`
+    uses. `name` is a resolved page address (a directory's is its `index`), so
+    its directory is the one listed. Only the first line of each page is read;
+    the caller turns it into a title with the same rule the renderer applies.
+    """
+    check_relative(name)
+    directory = name.rsplit("/", 1)[0] if "/" in name else ""
+    found: dict[str, tuple[str, str]] = {}  # page_name -> (kind, first_line)
+    for tree, suffix, kind in ((MD_TREE, ".md", "markdown"), (HTML_TREE, ".html", "html")):
+        base = root / tree / directory if directory else root / tree
+        if not base.is_dir():
+            continue
+        for path in sorted(base.glob(f"*{suffix}")):
+            if not path.is_file():
+                continue
+            page_name = f"{directory}/{path.name[: -len(suffix)]}" if directory else path.name[: -len(suffix)]
+            if page_name in found:  # the Markdown page already claimed this name
+                continue
+            try:
+                with path.open() as handle:
+                    first = handle.readline().rstrip("\n")
+            except OSError:
+                continue
+            found[page_name] = (kind, first)
+    return [(page_name, kind, first) for page_name, (kind, first) in sorted(found.items())]
+
+
 def find_asset(
     root: Path, path: str, trees: Iterable[str] = (MD_TREE, HTML_TREE)
 ) -> tuple[bytes, str]:

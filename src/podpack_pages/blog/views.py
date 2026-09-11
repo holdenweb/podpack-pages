@@ -15,6 +15,7 @@ nothing that can be stale.
 """
 
 from logging import getLogger
+from typing import Any
 
 from flask import Response, abort, url_for
 from flask.typing import ResponseReturnValue
@@ -40,15 +41,18 @@ def index() -> ResponseReturnValue:
     """Every post, newest first, grouped by year."""
     manifest = _manifest()
     title = str(app_config().get("index_title", FALLBACK_INDEX_TITLE))
-    return chrome.render("blog-index.html", title=title, years=_by_year(manifest.posts))
+    return chrome.render(
+        "blog-index.html", title=title, years=_by_year(manifest.posts), subnav=_archive(manifest)
+    )
 
 
 @blueprint.route("/<path:path>")
 def page(path: str) -> ResponseReturnValue:
     """A listed path is a post; anything else on disk is served as stored."""
-    post = _manifest().by_path.get(path)
+    manifest = _manifest()
+    post = manifest.by_path.get(path)
     if post is not None:
-        return _decorate(post)
+        return _decorate(post, manifest)
     try:
         body, ctype = find_asset(data_dir(), path, trees=(EXPORT_TREE,))
     except ContentNotFound:
@@ -72,7 +76,7 @@ def _manifest() -> Manifest:
         abort(503)
 
 
-def _decorate(post: Post) -> ResponseReturnValue:
+def _decorate(post: Post, manifest: Manifest) -> ResponseReturnValue:
     """Fill a post's placeholders with this app's mount and wrap it in chrome.
 
     A placeholder the contract does not define raises out of `render_fragment`
@@ -91,7 +95,13 @@ def _decorate(post: Post) -> ResponseReturnValue:
         abort(404)
     root = _root()
     html = render_fragment(raw, root, _image_root(root), source=post.path)
-    return chrome.render("blog-post.html", title=post.title, content=html, post=post)
+    return chrome.render(
+        "blog-post.html",
+        title=post.title,
+        content=html,
+        post=post,
+        subnav=_archive(manifest, current_year=post.year),
+    )
 
 
 def _root() -> str:
@@ -131,3 +141,24 @@ def _by_year(posts: tuple[Post, ...]) -> list[tuple[str, list[Post]]]:
     for post in ordered:
         years.setdefault(post.year, []).append(post)
     return list(years.items())
+
+
+def _archive(manifest: Manifest, current_year: str | None = None) -> list[dict[str, Any]]:
+    """A year-archive section nav, newest first, linking to the index anchors.
+
+    One group of year links to `<mount>/#<year>` -- the index's own year
+    headings carry those ids -- so it works from a post page as well as from
+    the index, and marks the post's year current. The shape matches the pages
+    kind's `Subnav` and the site's subnav template: groups of {label, href,
+    current} items.
+    """
+    root = _root()
+    items = [
+        {
+            "label": year or "Undated",
+            "href": f"{root}/#{year or 'undated'}",
+            "current": year == current_year,
+        }
+        for year, _posts in _by_year(manifest.posts)
+    ]
+    return [{"heading": "Archive", "items": items}]

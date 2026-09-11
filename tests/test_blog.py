@@ -66,7 +66,8 @@ def test_the_index_lists_posts_newest_first_grouped_by_year(
     )
     body = family.test_client().get("/blog/").get_data(as_text=True)
     assert body.index(">New<") < body.index(">Mid<") < body.index(">Old<")
-    assert body.index("<h2>2026</h2>") < body.index("<h2>2020</h2>") < body.index("<h2>2019</h2>")
+    # Year headings, in order, now carrying the id the archive subnav links to.
+    assert body.index('id="2026"') < body.index('id="2020"') < body.index('id="2019"')
     assert 'href="/blog/posts/2026/02/new.html"' in body
     assert "<title>A test-site blog</title>" in body  # [apps.blog] index_title
 

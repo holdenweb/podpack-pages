@@ -50,8 +50,15 @@ the bare form redirects to it (308) so that relative references inside an
 index page resolve within its directory. Mounted at the site root, this puts
 the top-level `index` page at `/` (podpack ADR-0024).
 
-**Markdown** renders with the `mdx_math` and `codehilite` extensions. A
-leading `# Heading` becomes the page's title and leaves the body.
+**Markdown** renders with the `fenced_code`, `codehilite` and `mdx_math`
+extensions. A leading `# Heading` becomes the page's title and leaves the
+body. A fenced block (```` ``` ```` or `~~~`) is highlighted with Pygments
+iff the fence names a language (```` ```python ````); an unlabelled fence is
+a plain block, never guessed at. The indented form with a `:::python` first
+line highlights too. Math is TeX between `\(..\)` (inline) or `$$..$$`,
+`\[..\]`, `\begin..\end` (display); a single `$` is not a delimiter, so a
+price stays a price. The TeX reaches the page untouched and MathJax renders
+it in the reader's browser (Templates, below).
 
 **HTML** is served as a page body inside the site's chrome. Relative `src`
 and `href` references are rewritten server-side through the app's own asset
@@ -64,6 +71,17 @@ every page it emits without knowing the chrome.
 A page that declares no title gets `[apps.<name>] default_title`, or
 "Untitled". A page named `asset/...` would be shadowed by the asset route;
 don't create one.
+
+**Section nav.** `[apps.<name>] subnav = true` puts a second-level nav in
+front of every page: the pages sharing the current page's directory, in name
+order, each labelled by its own title (the first-line rules above, else
+`default_title`), the page being served marked current. Markdown shadows HTML
+here as everywhere -- a name present in both trees is listed once, as the
+Markdown page -- and only each page's first line is read. A directory holding
+no page but the one being served gets no nav: a lone entry is not a menu. Off
+by default, because the pages-kind views are shared and `pybooks` already
+carries orpy's in-page course nav. What the chrome does with it is under
+Templates, below.
 
 ### `pybooks`: the Python course books
 
@@ -115,6 +133,12 @@ request, so a freshly copied export is live the moment it lands.
 | `/<mount>/posts/YYYY/MM/slug.html` | a post listed in the manifest, decorated |
 | `/<mount>/<anything else on disk>` | served as stored |
 
+Every blog page, index and post alike, carries an "Archive" section nav: one
+link per year, newest first, to that year's heading on the index
+(`/<mount>/#2019` -- the headings carry those ids), the post's own year marked
+current. It is a `subnav` of the same shape as the pages kind's, laid out by
+the site's chrome (Templates, below).
+
 Fragments are written before their site root is known: every URL into the
 tree is spelled `${{{ROOT}}}` (content) or `${{{IMAGE_ROOT}}}` (images), and
 publishing substitutes the mounted roots through Jinja with all of its
@@ -141,8 +165,8 @@ says so, and whose one link is a placeholder -- so a fresh install proves the
 whole chain. Copy the real export *mirroring* and the sample is gone; merge
 it and the sample lingers unlisted, served as stored if anyone types its URL.
 
-Comments, feeds, archive and category pages are not built; the manifest
-carries what any of them would need.
+Comments, feeds and category pages are not built; the manifest carries
+what any of them would need. The archive is the index's year headings.
 
 ## Installing on a site
 
@@ -153,6 +177,7 @@ apps = ["mysite", "podpack_pages", "podpack_pages.pybooks", "podpack_pages.blog"
 
 [apps.pages]
 default_title = "Just another note"     # a page that declares no title
+subnav = true                           # section nav of the directory's pages; off by default
 
 [apps.pybooks]
 default_title = "Python courses"
@@ -286,8 +311,26 @@ No restart, for any kind: every app here reads the disk on each request.
 ## Templates
 
 Every page extends the site's `base.html` and fills `{% block content %}`,
-passing `title`; the Markdown page also fills `{% block scripts %}` with
-MathJax, which a chrome that does not define that block silently drops.
+passing `title` and `subnav`. The Markdown page carries two more things a
+chrome must let through. The code-highlight stylesheet is written inline at
+the top of `content`, because the chromes share no head block. The MathJax 3
+loader fills `{% block scripts %}`, together with the MathJax project's
+render action for the `<script type="math/tex">` elements `mdx_math` writes;
+a chrome that does not define that block silently drops it and the math
+shows as raw TeX. The stylesheet is `templates/podpack_pages/codehilite.css`,
+Pygments' "default" style scoped to `.codehilite`; it is generated, and
+regenerated with the command in its first line. A site rethemes code for one
+app by shipping `templates/<app>/codehilite.css`, for every app with
+`templates/podpack_pages/codehilite.css`; a site that ships its own
+`markdown.html` owns both the stylesheet and MathJax from then on.
+
+`subnav` is the page's second-level nav, or `None`: a list of groups, each
+`{"heading": <text or None>, "items": [...]}` with items of
+`{"label", "href", "current"}`. The pages kind sends one unheaded group of the
+directory's sibling pages when `[apps.<name>] subnav` is on; the blog sends
+one group headed "Archive" of year links. The apps only fill it in; laying it
+out beside the content is the chrome's job, and a `base.html` that never
+mentions the variable shows no section nav and nothing else changes.
 
 Shipped defaults live under `templates/podpack_pages/` -- the name of the
 package the blueprint was built for, which no app's name can collide with --
@@ -323,10 +366,15 @@ logger, and the app's own file is the one to read first.
 | a post shows raw, no chrome, `${{{ROOT}}}` visible | its path is not in the manifest (a merge without mirroring) | compare `curl /blog/manifest.json` with the URL |
 | one post 404s though the index links it | the copy did not complete | `blog.log` WARNING names the missing file |
 | every heading reads "Untitled" | `[apps.<name>]` keyed on the import name | `/_status` → `installed_from` |
+| a page shows no section nav | `[apps.<name>] subnav` unset, the chrome does not render `subnav`, or the directory holds no other page | `config`; the site's `base.html`; `ls` both trees |
+| code blocks are plain, no colour | an install from before Pygments was a runtime dependency here, or a site `markdown.html` without the stylesheet | `uv export --no-dev` on the site; view source for `.codehilite .k` |
+| math shows as raw TeX | the chrome defines no `scripts` block, or the browser cannot reach the CDN | view source for `mathjax@3`; the browser console |
 | "Python" appears twice in the nav | the site still contributes its own entry | the site's `views.py` |
 
 ## Requirements
 
 Python ≥ 3.12; podpack ≥ 0.8 (the `status()`/`healthz()` hooks). podpack is
 deliberately absent from `dependencies` and lives in the dev group; see
-`pyproject.toml`.
+`pyproject.toml`. Pygments is a runtime dependency: `codehilite` is silent
+without it. MathJax is fetched by the reader's browser from jsdelivr, pinned
+to 3.2.2; the server needs nothing for it.

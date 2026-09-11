@@ -1,6 +1,6 @@
 [project]
 name = "podpack-pages"
-version = "0.3.1"
+version = "0.3.2"
 description = "Content pages for podpack sites: one name space, Markdown first, HTML second"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -10,6 +10,11 @@ dependencies = [
     # rather than borrowed from flask's own dependency on it.
     "jinja2>=3.1",
     "markdown>=3.5.2",
+    # codehilite imports Pygments optionally and, without it, quietly emits a
+    # bare <pre> with no highlighting. The test environment always had it (via
+    # pytest); production never did. A recent floor: nothing here needs a
+    # particular Pygments feature.
+    "pygments>=2.18",
     "python-markdown-math>=0.8",
 ]
 

@@ -1,0 +1,12 @@
+{#- A chrome with the block set a real site has (holdenweb's has these and
+    more), so tests can see what the shipped templates put into blocks that
+    podpack's own default base.html does not define: `scripts`, where the
+    Markdown page loads MathJax. -#}
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8"><title>{{ title }}</title></head>
+<body>
+<main>{% block content %}{% endblock %}</main>
+{% block scripts %}{% endblock %}
+</body>
+</html>

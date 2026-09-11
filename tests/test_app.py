@@ -7,7 +7,7 @@ from flask import Flask
 from conftest import ALL_CONFIG, SiteFactory
 
 from podpack_pages import chrome, site_app
-from podpack_pages.content import rewrite_asset_urls
+from podpack_pages.content import list_siblings, rewrite_asset_urls
 
 
 def test_the_app_names_itself_after_its_blueprint() -> None:
@@ -283,3 +283,37 @@ def test_the_default_templates_come_from_the_blueprints_own_package(site: SiteFa
     app.register_blueprint(stranger, url_prefix="/stranger")
     body = app.test_client().get("/stranger/").get_data(as_text=True)
     assert "DEFAULT FROM THE TESTSITE PACKAGE" in body
+
+
+def test_list_siblings_spans_both_trees_markdown_shadowing_html(tmp_path: Path) -> None:
+    """The section-nav source: every page in a directory, across both trees,
+    lexical, Markdown winning a shared name, each with its first line."""
+    md = tmp_path / "md-pages" / "guide"
+    html = tmp_path / "html-pages" / "guide"
+    md.mkdir(parents=True)
+    html.mkdir(parents=True)
+    (md / "intro.md").write_text("# Intro\n\nbody\n")
+    (md / "setup.md").write_text("# Setup\n")
+    (html / "intro.html").write_text("<!-- title: SHADOWED -->\n")  # loses to intro.md
+    (html / "appendix.html").write_text("<!-- title: Appendix -->\n<p>x</p>\n")
+
+    siblings = list_siblings(tmp_path, "guide/setup")
+
+    assert [name for name, _, _ in siblings] == ["guide/appendix", "guide/intro", "guide/setup"]
+    kinds = {name: kind for name, kind, _ in siblings}
+    assert kinds["guide/intro"] == "markdown"      # the Markdown page won the name
+    assert kinds["guide/appendix"] == "html"
+    firsts = {name: first for name, _, first in siblings}
+    assert firsts["guide/intro"] == "# Intro"
+    assert firsts["guide/appendix"] == "<!-- title: Appendix -->"
+
+
+def test_list_siblings_at_the_root_lists_top_level_pages(tmp_path: Path) -> None:
+    (tmp_path / "md-pages").mkdir()
+    (tmp_path / "html-pages").mkdir()
+    (tmp_path / "md-pages" / "index.md").write_text("# Home\n")
+    (tmp_path / "md-pages" / "about.md").write_text("# About\n")
+
+    names = [name for name, _, _ in list_siblings(tmp_path, "index")]
+
+    assert names == ["about", "index"]

@@ -1,16 +1,42 @@
+{#- The shipped default for a Markdown page. A site restyles it by shipping
+    templates/pages/markdown.html (this app only) or
+    templates/podpack_pages/markdown.html (every pages-kind app) -- and then
+    owns both of the things this file carries besides the body: the
+    code-highlight stylesheet and the MathJax loader. In scope: title, content
+    (the rendered body), subnav. -#}
 {% extends "base.html" %}
-{% block scripts %}
-<script type="text/javascript"
-  src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
-</script>
-<script type="text/x-mathjax-config">
-MathJax.Hub.Config({
-  config: ["MMLorHTML.js"],
-  jax: ["input/TeX", "output/HTML-CSS", "output/NativeMML"],
-  extensions: ["MathMenu.js", "MathZoom.js"]
-});
-</script>
-{% endblock %}
 {% block content %}
+{#- codehilite marks code up with Pygments' classes and nothing styles them
+    unless the chrome does. Shipped inline because the chromes share no head
+    block, and resolved like every template -- site, then app, then this
+    package -- so a site rethemes one app with templates/<app>/codehilite.css
+    and every app with templates/podpack_pages/codehilite.css. -#}
+<style>{% include [request.blueprint ~ "/codehilite.css", "podpack_pages/codehilite.css"] %}</style>
 {{ content | safe }}
+{% endblock %}
+{% block scripts %}
+<script>
+/* mdx_math writes MathJax-2-style <script type="math/tex"> elements. This is
+   the MathJax project's own render action for them ("Upgrading from v2",
+   Math in script tags). It replaces the delimiter search, so a $ in prose or
+   a $$ inside a code block is never taken for math. */
+MathJax = {
+  options: {
+    renderActions: {
+      find: [10, function (doc) {
+        for (const node of document.querySelectorAll('script[type^="math/tex"]')) {
+          const display = !!node.type.match(/; *mode=display/);
+          const math = new doc.options.MathItem(node.textContent, doc.inputJax[0], display);
+          const text = document.createTextNode('');
+          node.parentNode.replaceChild(text, node);
+          math.start = {node: text, delim: '', n: 0};
+          math.end = {node: text, delim: '', n: 0};
+          doc.math.push(math);
+        }
+      }, '']
+    }
+  }
+};
+</script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-chtml.js"></script>
 {% endblock %}
