@@ -46,7 +46,12 @@ logger = getLogger(__name__)
 FALLBACK_TITLE = "Untitled"
 
 # One instance, reset between documents: some extensions accumulate state.
-_md = markdown.Markdown(extensions=["mdx_math", "codehilite"])
+_md = markdown.Markdown(
+    extensions=["mdx_math", "fenced_code", "codehilite"],
+    # Highlight iff the fence names a language: guess_lexer on a prose-like
+    # block picks an arbitrary lexer and colours it wrongly.
+    extension_configs={"codehilite": {"guess_lang": False}},
+)
 
 _HEADING = re.compile(r"^(#+)\s+(.+)")
 
