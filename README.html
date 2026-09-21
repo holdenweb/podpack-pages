@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<style>
+/*
+ * Default print stylesheet for mdpdf.
+ *
+ * Supply an alternative with --css; it is appended after this sheet, so any
+ * rule here can be overridden without having to restate the whole thing.
+ */
+
+@page {
+    size: A4;
+    margin: 25mm 20mm;
+
+    @top-center {
+        content: string(doctitle);
+        font: italic 9pt Helvetica, Arial, sans-serif;
+        color: #666;
+        vertical-align: bottom;
+        padding-bottom: 4mm;
+    }
+
+    @bottom-center {
+        content: counter(page) " of " counter(pages);
+        font: 9pt Helvetica, Arial, sans-serif;
+        color: #666;
+        vertical-align: top;
+        padding-top: 4mm;
+    }
+}
+
+/* The title is on the first page already; repeating it there is just clutter. */
+@page :first {
+    @top-center { content: none }
+}
+
+body {
+    font: 11pt/1.5 "Palatino", "Palatino Linotype", Georgia, serif;
+    color: #111;
+    hyphens: auto;
+    orphans: 2;
+    widows: 2;
+}
+
+/* Carried into the running header by the @top-center rule above. */
+.title-block .title {
+    string-set: doctitle content();
+}
+
+.title-block {
+    margin-bottom: 12mm;
+    border-bottom: 0.4pt solid #999;
+    padding-bottom: 4mm;
+}
+
+.title-block .title {
+    font-size: 22pt;
+    margin: 0 0 2mm 0;
+}
+
+.title-block .author,
+.title-block .date {
+    margin: 0;
+    color: #444;
+    font-size: 10pt;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-family: Helvetica, Arial, sans-serif;
+    color: #000;
+    line-height: 1.25;
+    margin: 6mm 0 2mm 0;
+    /* A heading stranded at the foot of a page is the commonest print defect. */
+    break-after: avoid;
+    break-inside: avoid;
+}
+
+h1 { font-size: 18pt }
+h2 { font-size: 15pt }
+h3 { font-size: 13pt }
+h4, h5, h6 { font-size: 11pt }
+
+p {
+    margin: 0 0 2.5mm 0;
+    text-align: justify;
+}
+
+ul, ol {
+    margin: 0 0 2.5mm 0;
+    padding-left: 7mm;
+}
+
+li { margin-bottom: 1mm }
+
+blockquote {
+    margin: 3mm 0 3mm 5mm;
+    padding-left: 4mm;
+    border-left: 2pt solid #ccc;
+    color: #444;
+    font-style: italic;
+}
+
+hr {
+    border: none;
+    border-top: 0.4pt solid #999;
+    margin: 6mm 0;
+}
+
+a {
+    color: #12457a;
+    text-decoration: none;
+}
+
+img {
+    max-width: 100%;
+    break-inside: avoid;
+}
+
+code {
+    font-family: "SF Mono", Menlo, Consolas, monospace;
+    font-size: 9.5pt;
+}
+
+/* Inline code only: the rule is undone for code inside a pre, below. */
+p > code, li > code, td > code {
+    background: #f2f2f2;
+    padding: 0.3mm 1mm;
+    border-radius: 1mm;
+}
+
+pre {
+    background: #f7f7f7;
+    border: 0.4pt solid #ddd;
+    border-radius: 1mm;
+    padding: 2.5mm 3mm;
+    margin: 3mm 0;
+    line-height: 1.35;
+    /* Long lines must wrap: a PDF has no horizontal scrollbar. */
+    white-space: pre-wrap;
+    overflow-wrap: break-word;
+}
+
+pre code {
+    background: none;
+    padding: 0;
+}
+
+table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 4mm 0;
+    font-size: 10pt;
+    break-inside: avoid;
+}
+
+th, td {
+    border: 0.4pt solid #bbb;
+    padding: 1.5mm 2mm;
+    text-align: left;
+    vertical-align: top;
+}
+
+th {
+    background: #eee;
+    font-family: Helvetica, Arial, sans-serif;
+    font-weight: bold;
+}
+
+/* Column alignment arrives as an inline style attribute, which already wins
+ * over any rule here -- overriding it needs !important. */
+
+/* mdhtml shows this same document in a browser, where the body would
+ * otherwise run the full window width; a print sheet leaves margins to
+ * @page, which browsers ignore. WeasyPrint renders as print media, so
+ * nothing in this block can reach a PDF. */
+@media screen {
+    body {
+        max-width: 46em;
+        margin: 2em auto;
+        padding: 0 1em;
+    }
+}
+
+pre { line-height: 125%; }
+td.linenos .normal { color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px; }
+span.linenos { color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px; }
+td.linenos .special { color: #000000; background-color: #ffffc0; padding-left: 5px; padding-right: 5px; }
+span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 5px; padding-right: 5px; }
+pre code .hll { background-color: #ffffcc }
+pre code { background: #f8f8f8; }
+pre code .c { color: #3D7B7B; font-style: italic } /* Comment */
+pre code .err { border: 1px solid #F00 } /* Error */
+pre code .k { color: #008000; font-weight: bold } /* Keyword */
+pre code .o { color: #666 } /* Operator */
+pre code .ch { color: #3D7B7B; font-style: italic } /* Comment.Hashbang */
+pre code .cm { color: #3D7B7B; font-style: italic } /* Comment.Multiline */
+pre code .cp { color: #9C6500 } /* Comment.Preproc */
+pre code .cpf { color: #3D7B7B; font-style: italic } /* Comment.PreprocFile */
+pre code .c1 { color: #3D7B7B; font-style: italic } /* Comment.Single */
+pre code .cs { color: #3D7B7B; font-style: italic } /* Comment.Special */
+pre code .gd { color: #A00000 } /* Generic.Deleted */
+pre code .ge { font-style: italic } /* Generic.Emph */
+pre code .ges { font-weight: bold; font-style: italic } /* Generic.EmphStrong */
+pre code .gr { color: #E40000 } /* Generic.Error */
+pre code .gh { color: #000080; font-weight: bold } /* Generic.Heading */
+pre code .gi { color: #008400 } /* Generic.Inserted */
+pre code .go { color: #717171 } /* Generic.Output */
+pre code .gp { color: #000080; font-weight: bold } /* Generic.Prompt */
+pre code .gs { font-weight: bold } /* Generic.Strong */
+pre code .gu { color: #800080; font-weight: bold } /* Generic.Subheading */
+pre code .gt { color: #04D } /* Generic.Traceback */
+pre code .kc { color: #008000; font-weight: bold } /* Keyword.Constant */
+pre code .kd { color: #008000; font-weight: bold } /* Keyword.Declaration */
+pre code .kn { color: #008000; font-weight: bold } /* Keyword.Namespace */
+pre code .kp { color: #008000 } /* Keyword.Pseudo */
+pre code .kr { color: #008000; font-weight: bold } /* Keyword.Reserved */
+pre code .kt { color: #B00040 } /* Keyword.Type */
+pre code .m { color: #666 } /* Literal.Number */
+pre code .s { color: #BA2121 } /* Literal.String */
+pre code .na { color: #687822 } /* Name.Attribute */
+pre code .nb { color: #008000 } /* Name.Builtin */
+pre code .nc { color: #00F; font-weight: bold } /* Name.Class */
+pre code .no { color: #800 } /* Name.Constant */
+pre code .nd { color: #A2F } /* Name.Decorator */
+pre code .ni { color: #717171; font-weight: bold } /* Name.Entity */
+pre code .ne { color: #CB3F38; font-weight: bold } /* Name.Exception */
+pre code .nf { color: #00F } /* Name.Function */
+pre code .nl { color: #767600 } /* Name.Label */
+pre code .nn { color: #00F; font-weight: bold } /* Name.Namespace */
+pre code .nt { color: #008000; font-weight: bold } /* Name.Tag */
+pre code .nv { color: #19177C } /* Name.Variable */
+pre code .ow { color: #A2F; font-weight: bold } /* Operator.Word */
+pre code .w { color: #BBB } /* Text.Whitespace */
+pre code .mb { color: #666 } /* Literal.Number.Bin */
+pre code .mf { color: #666 } /* Literal.Number.Float */
+pre code .mh { color: #666 } /* Literal.Number.Hex */
+pre code .mi { color: #666 } /* Literal.Number.Integer */
+pre code .mo { color: #666 } /* Literal.Number.Oct */
+pre code .sa { color: #BA2121 } /* Literal.String.Affix */
+pre code .sb { color: #BA2121 } /* Literal.String.Backtick */
+pre code .sc { color: #BA2121 } /* Literal.String.Char */
+pre code .dl { color: #BA2121 } /* Literal.String.Delimiter */
+pre code .sd { color: #BA2121; font-style: italic } /* Literal.String.Doc */
+pre code .s2 { color: #BA2121 } /* Literal.String.Double */
+pre code .se { color: #AA5D1F; font-weight: bold } /* Literal.String.Escape */
+pre code .sh { color: #BA2121 } /* Literal.String.Heredoc */
+pre code .si { color: #A45A77; font-weight: bold } /* Literal.String.Interpol */
+pre code .sx { color: #008000 } /* Literal.String.Other */
+pre code .sr { color: #A45A77 } /* Literal.String.Regex */
+pre code .s1 { color: #BA2121 } /* Literal.String.Single */
+pre code .ss { color: #19177C } /* Literal.String.Symbol */
+pre code .bp { color: #008000 } /* Name.Builtin.Pseudo */
+pre code .fm { color: #00F } /* Name.Function.Magic */
+pre code .vc { color: #19177C } /* Name.Variable.Class */
+pre code .vg { color: #19177C } /* Name.Variable.Global */
+pre code .vi { color: #19177C } /* Name.Variable.Instance */
+pre code .vm { color: #19177C } /* Name.Variable.Magic */
+pre code .il { color: #666 } /* Literal.Number.Integer.Long */
+</style>
+</head>
+<body>
+<h1>podpack-pages</h1>
+<p>One distribution, three <a href="https://github.com/holdenweb/podpack">podpack</a> apps,
+each serving a set of a site's content from that app's own host data
+directory. A site installs any of them by naming it in <code>[site] apps</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Import name (in <code>apps</code>)</th>
+<th>App name (keys everything else)</th>
+<th>Asks to mount at</th>
+<th>Kind</th>
+<th>Host tree it serves</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>podpack_pages</code></td>
+<td><code>pages</code></td>
+<td><code>/pages</code></td>
+<td>unified Markdown/HTML space</td>
+<td><code>&lt;data root&gt;/pages/{md-pages,html-pages}/</code></td>
+</tr>
+<tr>
+<td><code>podpack_pages.pybooks</code></td>
+<td><code>pybooks</code></td>
+<td><code>/pybooks</code></td>
+<td>the same kind, a second time</td>
+<td><code>&lt;data root&gt;/pybooks/html-pages/</code> ← orpy's <code>build.py --fragments</code> tree</td>
+</tr>
+<tr>
+<td><code>podpack_pages.blog</code></td>
+<td><code>blog</code></td>
+<td><code>/blog</code></td>
+<td>a sitescraper export, served from its manifest</td>
+<td><code>&lt;data root&gt;/blog/export/</code> ← sitescraper's <code>build/</code></td>
+</tr>
+</tbody>
+</table>
+<p>Three spellings, per podpack convention: the distribution is <code>podpack-pages</code>;
+the <em>import</em> names above go in a site's <code>apps</code> list; the <em>app</em> names are the
+blueprints' names and key <code>[apps.&lt;name&gt;]</code>, <code>[site.mounts]</code>, the directories on
+disk, the log files and the template namespaces. <code>/_status</code> reports the
+mapping under <code>installed_from</code> for anyone unsure which is which.</p>
+<p>Each app is an ordinary podpack app in its own right -- own data directory,
+own config section, own mount override, own nav entry, own log file, own
+<code>/_status</code> entry -- because podpack installs a dotted subpackage exactly as it
+installs a top-level one. <code>pages</code> contributes no nav entry; <code>pybooks</code> and
+<code>blog</code> contribute &quot;Python&quot; and &quot;Blog&quot;, which resolve to their roots wherever
+the site mounts them.</p>
+<h2>The pages kind: <code>pages</code> and <code>pybooks</code></h2>
+<p>Content lives in the app's host data directory, in two trees:</p>
+<pre><code>&lt;data root&gt;/&lt;name&gt;/md-pages/       Markdown, searched first
+&lt;data root&gt;/&lt;name&gt;/html-pages/     HTML, searched second; assets live beside pages
+</code></pre>
+<p><code>/&lt;mount&gt;/&lt;name&gt;</code> searches the Markdown tree (<code>md-pages/&lt;name&gt;.md</code>) first and
+the HTML tree (<code>html-pages/&lt;name&gt;.html</code>) second, so a page's address never
+says which format it is stored in, and a Markdown page shadows an HTML one of
+the same name.</p>
+<table>
+<thead>
+<tr>
+<th>Route</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/&lt;mount&gt;/&lt;name&gt;</code></td>
+<td>serve the page, Markdown space first</td>
+</tr>
+<tr>
+<td><code>/&lt;mount&gt;/&lt;dir&gt;/</code></td>
+<td>serve the directory's <code>index</code> page</td>
+</tr>
+<tr>
+<td><code>/&lt;mount&gt;/</code></td>
+<td>serve the top-level <code>index</code> page</td>
+</tr>
+<tr>
+<td><code>/&lt;mount&gt;/asset/&lt;path&gt;</code></td>
+<td>serve an asset (image, stylesheet) belonging to a page, cached an hour</td>
+</tr>
+</tbody>
+</table>
+<p>A name that is a directory in either tree serves the directory's <code>index</code>
+page, resolved like any other name. The canonical address is the slash form;
+the bare form redirects to it (308) so that relative references inside an
+index page resolve within its directory. Mounted at the site root, this puts
+the top-level <code>index</code> page at <code>/</code> (podpack ADR-0024).</p>
+<p><strong>Markdown</strong> renders with the <code>mdx_math</code> and <code>codehilite</code> extensions. A
+leading <code># Heading</code> becomes the page's title and leaves the body.</p>
+<p><strong>HTML</strong> is served as a page body inside the site's chrome. Relative <code>src</code>
+and <code>href</code> references are rewritten server-side through the app's own asset
+route, so they follow the app wherever the site mounts it; absolute ones
+(<code>/...</code>, <code>http(s)://</code>, <code>#</code>, <code>mailto:</code>, <code>data:</code>) pass through untouched. A page
+whose first line is <code>&lt;!-- title: The Title --&gt;</code> is titled by it, and the
+comment leaves the body -- the Markdown rule's twin, so a generator can title
+every page it emits without knowing the chrome.</p>
+<p>A page that declares no title gets <code>[apps.&lt;name&gt;] default_title</code>, or
+&quot;Untitled&quot;. A page named <code>asset/...</code> would be shadowed by the asset route;
+don't create one.</p>
+<h3><code>pybooks</code>: the Python course books</h3>
+<p><code>pybooks</code> <em>is</em> the pages app installed a second time under another name
+(<code>src/podpack_pages/pybooks/__init__.py</code> is two imports and one <code>PagesApp(...)</code>
+construction). Its <code>html-pages/</code>
+tree is where the orpy repository's <code>build.py --fragments</code> output is copied,
+verbatim: <code>index.html</code>, <code>python1/</code>..<code>python4/</code> with their <code>images/</code>, and
+<code>common/course.css|js</code>. Those fragments were shaped to this app's behaviour
+-- relative image srcs (rewritten here), absolute suffix-less links between
+pages and absolute css/js links (passed through) -- so nothing here is orpy-
+specific. Two things follow from the links being absolute:</p>
+<ul>
+<li>orpy must be built with <code>courses.yaml pages_prefix</code> equal to this app's
+mount (<code>/pybooks</code> unless the site moves it); a tree built for another
+prefix serves its pages and 404s on every link between them. This app
+does not rewrite absolute links and will not detect the mismatch.</li>
+<li>The whole tree is copied each time, mirroring: a course removed upstream
+should disappear here too.</li>
+</ul>
+<p>Until a tree is copied in, <code>/pybooks/</code> serves a seeded placeholder page that
+says so. It is <code>html-pages/index.html</code>, the path orpy's own landing page
+overwrites -- and deliberately not a Markdown page, which would shadow the
+real landing for ever after.</p>
+<h2>The blog kind: <code>blog</code></h2>
+<p>The sitescraper repository captures a Blogger blog into MongoDB and exports
+it (<code>python -m blogscraper export</code>) as a tree of content-only fragments with a
+manifest. That tree is copied verbatim into this app's data directory:</p>
+<pre><code>&lt;data root&gt;/blog/export/manifest.json          what is a post, with titles, dates, categories
+&lt;data root&gt;/blog/export/posts/YYYY/MM/slug.html one fragment per post; the .html is kept on purpose
+&lt;data root&gt;/blog/export/images/&lt;hash&gt;.&lt;ext&gt;     harvested images
+</code></pre>
+<p>The manifest is the contract (sitescraper ADR-0007). A request under the
+mount whose path the manifest lists is a <strong>post</strong>: the fragment's
+placeholders are filled in and it is wrapped in the site's chrome, titled
+from the manifest. Anything else that exists in the tree -- images, the
+manifest itself, a stray file -- is served exactly as stored, cached an hour.
+Nothing else is served; nothing is cached; the manifest is read on every
+request, so a freshly copied export is live the moment it lands.</p>
+<table>
+<thead>
+<tr>
+<th>Route</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/&lt;mount&gt;/</code></td>
+<td>every post, newest first, grouped by year, titled <code>[apps.blog] index_title</code></td>
+</tr>
+<tr>
+<td><code>/&lt;mount&gt;/posts/YYYY/MM/slug.html</code></td>
+<td>a post listed in the manifest, decorated</td>
+</tr>
+<tr>
+<td><code>/&lt;mount&gt;/&lt;anything else on disk&gt;</code></td>
+<td>served as stored</td>
+</tr>
+</tbody>
+</table>
+<p>Fragments are written before their site root is known: every URL into the
+tree is spelled <code>${{{ROOT}}}</code> (content) or <code>${{{IMAGE_ROOT}}}</code> (images), and
+publishing substitutes the mounted roots through Jinja with all of its
+delimiters moved to those distinctive sentinels, so <code>${HOME}</code>, <code>{{ x }}</code> and
+<code>{% for %}</code> in a post's code samples pass through untouched (sitescraper
+ADR-0009 and ADR-0010). <code>ROOT</code> is this app's mount, read per request, so
+<code>[site.mounts] blog = &quot;/elsewhere&quot;</code> moves every link inside every post with
+no regeneration. <code>IMAGE_ROOT</code> is <code>[apps.blog] image_root</code> if the site sets
+one, else <code>ROOT</code>. The eight-line publish step is restated in
+<code>src/podpack_pages/blog/publish.py</code> rather than imported, because
+<code>blogscraper</code> carries MongoDB, BeautifulSoup and requests; the delimiter
+strings there must match sitescraper's <code>blogscraper/publish.py</code>,
+<code>tests/test_publish.py</code> pins them on both sides, and a manifest whose <code>root_placeholder</code> disagrees is refused.</p>
+<p>A manifest that is missing, unparseable, or lists a path that steps outside
+the tree makes the <strong>whole blog answer 503</strong>, with one ERROR line in
+<code>blog.log</code> naming the file and the remedy, and <code>/healthz</code> reporting the app
+unhealthy (not fatal: the rest of the site serves). Partly serving a tree
+nobody can trust was the alternative. A post the manifest lists but the tree
+lacks is a 404 with a WARNING naming the file: a copy that did not complete.</p>
+<p>Until an export is copied in, the app serves a seeded one-post sample that
+says so, and whose one link is a placeholder -- so a fresh install proves the
+whole chain. Copy the real export <em>mirroring</em> and the sample is gone; merge
+it and the sample lingers unlisted, served as stored if anyone types its URL.</p>
+<p>Comments, feeds, archive and category pages are not built; the manifest
+carries what any of them would need.</p>
+<h2>Installing on a site</h2>
+<pre><code class="language-toml"><span class="k">[site]</span>
+<span class="n">apps</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">"mysite"</span><span class="p">,</span><span class="w"> </span><span class="s2">"podpack_pages"</span><span class="p">,</span><span class="w"> </span><span class="s2">"podpack_pages.pybooks"</span><span class="p">,</span><span class="w"> </span><span class="s2">"podpack_pages.blog"</span><span class="p">]</span>
+<span class="c1"># nav order is this order: Python, Blog</span>
+
+<span class="k">[apps.pages]</span>
+<span class="n">default_title</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"Just another note"</span><span class="w">     </span><span class="c1"># a page that declares no title</span>
+
+<span class="k">[apps.pybooks]</span>
+<span class="n">default_title</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"Python courses"</span>
+
+<span class="k">[apps.blog]</span>
+<span class="n">index_title</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"Blog"</span><span class="w">                    </span><span class="c1"># title of the index page</span>
+<span class="n">default_title</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"Untitled post"</span><span class="w">         </span><span class="c1"># a post whose manifest title is empty</span>
+<span class="c1"># image_root = "https://img.example"    # only if images are served from elsewhere</span>
+</code></pre>
+<p>Every key is optional and has a shipped default. Mounts are not config of
+these apps: <code>[site.mounts] pybooks = &quot;/courses&quot;</code> is the site's table (podpack
+ADR-0006), and routes, nav entries, rewritten asset URLs and substituted
+roots all follow it. A mis-keyed section (<code>[apps.podpack_pages.blog]</code>, the
+import name) is podpack's one silent failure: the defaults apply and nothing
+says so. <code>/_status</code> reports each app's effective content counts and, for the
+blog, which manifest is live.</p>
+<p>Copying content onto a host is the site's business; podpack promises only
+that each app's directory is <code>&lt;data root&gt;/&lt;name&gt;/</code>. A site running podpack's
+substrate typically has a refresh script that takes the app and tree by name
+(holdenweb.com's <code>ops/refresh-content.sh</code>):</p>
+<pre><code>APP=pybooks TREE=html-pages ops/refresh-content.sh &lt;the orpy tree&gt; --mirror
+APP=blog    TREE=export     ops/refresh-content.sh &lt;the sitescraper build/&gt; --mirror
+</code></pre>
+<p>No restart either time.</p>
+<h2>Adding a content set</h2>
+<p>Every content set on a site is its own podpack app, and one distribution may
+ship several (podpack ADR-0038, &quot;A distribution can ship more than one app&quot;):
+the registry keys everything off the blueprint's name, so the apps here are
+enabled, mounted and configured independently, exactly as apps from separate
+distributions are. Adding a content set is therefore adding an app, never
+extending an existing one.</p>
+<h3>The common case: another pages-kind app</h3>
+<p>If the new content is a tree of Markdown and HTML pages -- hand-written, or
+generated the way orpy generates the course books -- it is the pages kind,
+and the whole app is a subpackage exposing a <code>PagesApp</code> under a new name.
+<code>src/podpack_pages/pybooks/__init__.py</code> is the template:</p>
+<pre><code class="language-python"><span class="c1"># src/podpack_pages/&lt;name&gt;/__init__.py</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">podpack</span><span class="w"> </span><span class="kn">import</span> <span class="n">Section</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">..views</span><span class="w"> </span><span class="kn">import</span> <span class="n">PagesApp</span><span class="p">,</span> <span class="n">make_blueprint</span>
+
+<span class="n">site_app</span> <span class="o">=</span> <span class="n">PagesApp</span><span class="p">(</span>
+    <span class="n">blueprint</span><span class="o">=</span><span class="n">make_blueprint</span><span class="p">(</span><span class="s2">"&lt;name&gt;"</span><span class="p">),</span>
+    <span class="n">url_prefix</span><span class="o">=</span><span class="s2">"/&lt;name&gt;"</span><span class="p">,</span>
+    <span class="n">nav</span><span class="o">=</span><span class="p">(</span><span class="n">Section</span><span class="p">(</span><span class="s2">"&lt;Label&gt;"</span><span class="p">,</span> <span class="s2">"&lt;name&gt;.page"</span><span class="p">),),</span>   <span class="c1"># or nav=() to stay out of the nav</span>
+<span class="p">)</span>
+</code></pre>
+<p>Everything else follows from the name: the data directory
+<code>&lt;data root&gt;/&lt;name&gt;/</code>, the config section <code>[apps.&lt;name&gt;]</code>, the log file, the
+template namespace <code>templates/&lt;name&gt;/</code> and the <code>/_status</code> entry. Nothing in
+<code>views.py</code>, <code>content.py</code> or <code>chrome.py</code> changes. Three rules:</p>
+<ul>
+<li><strong>The name is the blueprint's, typed once.</strong> It must not collide with any
+app a site might install beside it -- <code>pages</code>, <code>pybooks</code>, <code>blog</code>, the site's
+own -- because podpack refuses to boot two apps of one name.</li>
+<li><strong>Ship a placeholder</strong>, <code>src/podpack_pages/&lt;name&gt;/data/html-pages/index.html</code>,
+saying what the app is and where its real tree goes. podpack seeds it into
+the app's empty directory on first install (ADR-0008), so a fresh site
+serves <code>/&lt;name&gt;/</code> with a 200 and the mount, the nav entry and <code>/_status</code>
+can all be checked before any content is copied. Make it HTML, at
+<code>html-pages/index.html</code>: that is the path a real tree's own landing page
+overwrites, whereas a Markdown placeholder would shadow that landing page
+for ever. Seeding happens once, so a later change to the placeholder never
+reaches a host that already has the directory.</li>
+<li><strong>The nav label is a fixed string.</strong> A <code>Section</code> is frozen at import time
+and podpack gives a site no lever to relabel it (ADR-0022).</li>
+</ul>
+<p>Add a test file on the pattern of <code>tests/test_pybooks.py</code>: the app names
+itself after its blueprint, installs by its import name, seeds its own
+placeholder and not another app's, reads its own <code>[apps.&lt;name&gt;]</code>, contributes
+a nav entry that resolves to its root, and follows a <code>[site.mounts]</code> remount.</p>
+<p>The same construction works from a distribution of its own: a package that
+depends on <code>podpack-pages</code> builds its <code>site_app</code> from
+<code>podpack_pages.views.PagesApp</code> and <code>make_blueprint</code> exactly as above and
+ships its own <code>data/</code>. Verified by installing such a package beside the
+three apps here.</p>
+<h3>When to build a new kind instead</h3>
+<p>Reuse <code>PagesApp</code> when the content is pages: files addressed by name, one per
+URL, that the site's chrome can wrap as they are. Build a new kind -- a
+<code>views.py</code> of its own and, if it has anything to report, a <code>SiteApp</code>
+subclass -- when the content has a contract of its own: addresses that are
+not file names, a manifest or index that decides what is served and how,
+titles that come from somewhere other than the file, placeholders to fill at
+serve time, or a health question an operator would ask (&quot;is the manifest
+readable?&quot;). <code>src/podpack_pages/blog/</code> is the worked example: <code>views.py</code>
+routes, <code>manifest.py</code> reads the export's index, <code>publish.py</code> restates the
+producer's contract, and <code>BlogApp</code> answers <code>/healthz</code> and <code>/_status</code>. What a
+kind shares with the others is the toolbox, not the views:
+<code>chrome.blueprint()</code> and <code>chrome.render()</code> for templates,
+<code>content.check_relative()</code> and <code>content.find_asset()</code> for reading a tree
+safely. A new kind's default templates go under <code>templates/podpack_pages/</code>
+beside the others, named for the kind.</p>
+<h3>What the site then does</h3>
+<ol>
+<li>Add the import name, <code>podpack_pages.&lt;name&gt;</code>, to <code>[site] apps</code>, in the
+position its nav entry should take: nav order is installation order.</li>
+<li>Optionally set <code>[apps.&lt;name&gt;]</code> keys (every one has a default) and, if the
+app asks to mount somewhere the site does not want it,
+<code>[site.mounts] &lt;name&gt; = &quot;/elsewhere&quot;</code>.</li>
+<li>Release and re-pin. A site depends on this distribution by version or
+commit, so a new app reaches it only through a new release here and a
+re-lock there.</li>
+<li>Copy the content into <code>&lt;data root&gt;/&lt;name&gt;/html-pages/</code>, or whatever tree
+the kind reads. On a site running podpack's substrate that is the site's
+refresh script with the app and tree named; holdenweb.com wraps its
+<code>ops/refresh-content.sh</code> and <code>ops/push-content.sh</code> in one <code>just</code> recipe
+that takes them as arguments:</li>
+</ol>
+<pre><code>just content staging &lt;source-dir&gt; &lt;name&gt; html-pages --mirror
+</code></pre>
+<p>No restart, for any kind: every app here reads the disk on each request.</p>
+<h2>Templates</h2>
+<p>Every page extends the site's <code>base.html</code> and fills <code>{% block content %}</code>,
+passing <code>title</code>; the Markdown page also fills <code>{% block scripts %}</code> with
+MathJax, which a chrome that does not define that block silently drops.</p>
+<p>Shipped defaults live under <code>templates/podpack_pages/</code> -- the name of the
+package the blueprint was built for, which no app's name can collide with --
+and are looked up after the app's own name, so a site restyles:</p>
+<ul>
+<li>one app, by shipping <code>templates/pybooks/html.html</code> or
+<code>templates/blog/blog-post.html</code> (podpack ADR-0005 shadowing);</li>
+<li>every app of a kind, by shipping <code>templates/podpack_pages/&lt;page&gt;</code>.</li>
+</ul>
+<p>The pages: <code>markdown.html</code>, <code>html.html</code>, <code>blog-index.html</code>, <code>blog-post.html</code>.
+An existing site override at <code>templates/pages/*.html</code> keeps working.</p>
+<p><code>chrome.py</code> is not tied to this package. A distribution of its own that
+depends on podpack-pages builds its blueprints with
+<code>chrome.blueprint(name, &quot;its_package&quot;)</code> and calls <code>chrome.render()</code> exactly as
+the apps here do; its defaults then come from its own <code>templates/its_package/</code>.</p>
+<h2>Logs</h2>
+<p>Each app logs to <code>&lt;log root&gt;/&lt;name&gt;/&lt;name&gt;.log</code>. Because <code>pybooks</code> and <code>blog</code>
+are subpackages of <code>podpack_pages</code>, Python's logger propagation also delivers
+their records to <code>pages.log</code> when <code>pages</code> is installed; each record names its
+logger, and the app's own file is the one to read first.</p>
+<h2>When something is wrong</h2>
+<table>
+<thead>
+<tr>
+<th>Symptom</th>
+<th>Cause</th>
+<th>Where it says so</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/pybooks/</code> shows the placeholder page</td>
+<td>the orpy tree was never copied, or landed under another app</td>
+<td><code>/_status</code> → <code>apps.pybooks.reported</code> counts</td>
+</tr>
+<tr>
+<td>course pages render, links between them 404</td>
+<td>orpy built with the wrong <code>pages_prefix</code></td>
+<td>view source: the hrefs name the prefix they were built for</td>
+</tr>
+<tr>
+<td>course images 404</td>
+<td><code>images/</code> not copied beside the pages</td>
+<td>the rewritten URL maps 1:1 onto <code>html-pages/&lt;course&gt;/images/</code></td>
+</tr>
+<tr>
+<td>every <code>/blog</code> URL is 503</td>
+<td>manifest missing, malformed, foreign placeholder, or a bad entry</td>
+<td><code>blog.log</code> ERROR names the file and the remedy; <code>/healthz</code></td>
+</tr>
+<tr>
+<td>a post shows raw, no chrome, <code>${{{ROOT}}}</code> visible</td>
+<td>its path is not in the manifest (a merge without mirroring)</td>
+<td>compare <code>curl /blog/manifest.json</code> with the URL</td>
+</tr>
+<tr>
+<td>one post 404s though the index links it</td>
+<td>the copy did not complete</td>
+<td><code>blog.log</code> WARNING names the missing file</td>
+</tr>
+<tr>
+<td>every heading reads &quot;Untitled&quot;</td>
+<td><code>[apps.&lt;name&gt;]</code> keyed on the import name</td>
+<td><code>/_status</code> → <code>installed_from</code></td>
+</tr>
+<tr>
+<td>&quot;Python&quot; appears twice in the nav</td>
+<td>the site still contributes its own entry</td>
+<td>the site's <code>views.py</code></td>
+</tr>
+</tbody>
+</table>
+<h2>Requirements</h2>
+<p>Python ≥ 3.12; podpack ≥ 0.8 (the <code>status()</code>/<code>healthz()</code> hooks). podpack is
+deliberately absent from <code>dependencies</code> and lives in the dev group; see
+<code>pyproject.toml</code>.</p>
+
+</body>
+</html>
