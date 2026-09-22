@@ -28,6 +28,16 @@ ASSET_CACHE_CONTROL = "public, max-age=3600"
 
 _ABSOLUTE_PREFIXES = ("/", "http://", "https://", "data:", "#", "mailto:")
 
+# A relative link to an HTML file inside a content tree is a *page*, not an
+# asset: served through the page route it arrives in the site's chrome, and
+# through the asset route it arrives as a bare document with the site lost
+# around it. The rule is deliberately blunt -- suffix only, with no lookup in
+# the tree -- because the alternative is a disk hit per link on every render,
+# and because an HTML file that is genuinely an asset is rarer than a link that
+# is genuinely a page. Where it guesses wrong it is wrong for one link, which
+# is how the old behaviour was wrong for every one of them.
+_PAGE_SUFFIXES = (".html", ".htm")
+
 
 class ContentNotFound(LookupError):
     """The requested content does not exist."""
@@ -134,14 +144,30 @@ _ATTR_RE = re.compile(
 )
 
 
-def rewrite_asset_urls(html: str, page_dir: str, asset_url: Callable[[str], str]) -> str:
-    """Rewrite relative `src`/`href` values through `asset_url`.
+def rewrite_relative_urls(
+    html: str,
+    page_dir: str,
+    asset_url: Callable[[str], str],
+    page_url: Callable[[str], str],
+) -> str:
+    """Rewrite relative `src`/`href` values to this app's own routes.
 
-    `asset_url` maps a path relative to the content trees to a servable URL --
-    the view passes `url_for(".asset", ...)` so the result follows the app
-    wherever the site mounts it. Absolute URLs, anchors, `mailto:` and `data:`
-    URIs pass through unchanged. `page_dir` is the directory the page lives in
-    relative to its tree, empty at the root.
+    A value ending `.html` (or `.htm`) is a link to another page and is mapped
+    through `page_url` with the suffix dropped, because the page space is
+    extensionless -- `find_page` appends `.md` and `.html` itself. Everything
+    else is an asset and goes through `asset_url`. The view supplies
+    `url_for(".page", ...)` and `url_for(".asset", ...)`, so both follow the app
+    wherever the site mounts it.
+
+    Absolute URLs, anchors, `mailto:` and `data:` URIs pass through unchanged.
+    `page_dir` is the directory the page lives in relative to its tree, empty at
+    the root. A `#fragment` or `?query` is split off before the decision and put
+    back after it -- without that, `notes.html#intro` would not be recognised as
+    a page at all, and the `#` would be percent-encoded into the path.
+
+    Nothing here normalises `..`. A link that climbs out of a tree is refused by
+    `check_relative` when it is requested, which is where that judgement belongs
+    and where it cannot be bypassed by a rewrite.
     """
 
     def _replace(m: re.Match[str]) -> str:
@@ -149,7 +175,15 @@ def rewrite_asset_urls(html: str, page_dir: str, asset_url: Callable[[str], str]
         lowered = val.lower()
         if any(lowered.startswith(p) for p in _ABSOLUTE_PREFIXES):
             return m.group(0)
-        target = f"{page_dir}/{val}" if page_dir else val
-        return f'{m.group("attr")}={m.group("q")}{asset_url(target)}{m.group("q")}'
+        cut = min((i for i in (val.find("#"), val.find("?")) if i != -1), default=len(val))
+        path, tail = val[:cut], val[cut:]
+        if not path:                        # e.g. "?x=1" with no path of its own
+            return m.group(0)
+        target = f"{page_dir}/{path}" if page_dir else path
+        if path.lower().endswith(_PAGE_SUFFIXES):
+            url = page_url(target[: target.rindex(".")])
+        else:
+            url = asset_url(target)
+        return f'{m.group("attr")}={m.group("q")}{url}{tail}{m.group("q")}'
 
     return _ATTR_RE.sub(_replace, html)

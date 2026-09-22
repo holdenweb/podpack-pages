@@ -7,7 +7,7 @@ from flask import Flask
 from conftest import ALL_CONFIG, SiteFactory
 
 from podpack_pages import chrome, site_app
-from podpack_pages.content import list_siblings, rewrite_asset_urls
+from podpack_pages.content import list_siblings, rewrite_relative_urls
 
 
 def test_the_app_names_itself_after_its_blueprint() -> None:
@@ -170,7 +170,47 @@ def test_the_rewrite_follows_a_remount(site: SiteFactory) -> None:
 
 def test_absolute_urls_pass_through_the_rewrite() -> None:
     html = '<a href="https://example.com/x">x</a><a href="#frag">f</a><img src="/abs.png">'
-    assert rewrite_asset_urls(html, "dir", lambda t: f"/X/{t}") == html
+    assert rewrite_relative_urls(
+        html, "dir", lambda t: f"/A/{t}", lambda t: f"/P/{t}"
+    ) == html
+
+
+def test_the_rewrite_sends_html_to_pages_and_the_rest_to_assets() -> None:
+    """An HTML file in a content tree is a page; anything else is an asset."""
+    html = (
+        '<a href="notes.html">n</a>'
+        '<a href="deep/notes.htm?x=1">d</a>'
+        '<a href="notes.html#intro">i</a>'
+        '<img src="pic.png">'
+    )
+    out = rewrite_relative_urls(html, "dir", lambda t: f"/A/{t}", lambda t: f"/P/{t}")
+    assert 'href="/P/dir/notes"' in out          # suffix dropped: the space is extensionless
+    assert 'href="/P/dir/deep/notes?x=1"' in out  # .htm too, query preserved
+    assert 'href="/P/dir/notes#intro"' in out     # the fragment survives the split
+    assert 'src="/A/dir/pic.png"' in out          # assets are unaffected
+
+
+def test_a_relative_html_link_goes_to_the_page_route(app: Flask, content: Path) -> None:
+    """Through the asset route the link arrives as a bare document with the
+    site's chrome lost around it, which is what this stops."""
+    sub = content / "html-pages" / "sub"
+    sub.mkdir()
+    (sub / "page.html").write_text('<a href="other.html">next</a>')
+    (sub / "other.html").write_text("<p>the other one</p>")
+    body = app.test_client().get("/pages/sub/page").get_data(as_text=True)
+    assert 'href="/pages/sub/other"' in body
+    assert "/pages/asset/sub/other.html" not in body
+
+
+def test_a_page_link_lands_even_when_the_target_is_markdown(app: Flask, content: Path) -> None:
+    """Why the suffix is dropped rather than trusted: the page space is
+    extensionless, so a link to `guide.html` resolves to `guide.md` when that is
+    what the tree actually holds."""
+    (content / "html-pages" / "linker.html").write_text('<a href="guide.html">g</a>')
+    (content / "md-pages" / "guide.md").write_text("# Guide\n\nbody here")
+    client = app.test_client()
+    assert 'href="/pages/guide"' in client.get("/pages/linker").get_data(as_text=True)
+    assert client.get("/pages/guide").status_code == 200
 
 
 def test_assets_are_served_with_a_content_type(app: Flask, content: Path) -> None:

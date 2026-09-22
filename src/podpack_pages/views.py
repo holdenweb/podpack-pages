@@ -33,7 +33,7 @@ from .content import (
     find_page,
     is_page_dir,
     list_siblings,
-    rewrite_asset_urls,
+    rewrite_relative_urls,
 )
 
 # The shape a second-level nav is passed to the chrome in, shared by every app
@@ -185,5 +185,10 @@ def _render_html(raw: str, name: str, subnav: Subnav | None = None) -> ResponseR
     found = _title_from_first("html", first)
     title, body = (found, rest) if found else (_default_title(), raw)
     page_dir = posixpath.dirname(name)
-    body = rewrite_asset_urls(body, page_dir, lambda target: url_for(".asset", path=target))
+    body = rewrite_relative_urls(
+        body,
+        page_dir,
+        lambda target: url_for(".asset", path=target),
+        lambda target: url_for(".page", name=target),
+    )
     return chrome.render("html.html", content=body, title=title, subnav=subnav)
