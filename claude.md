@@ -9,18 +9,19 @@ app kind works, and the contracts it keeps, is in the README.
 
 Always-on rules. Each prevents a silent-failure mode.
 
-1. **The remote and the history are the user's.** Never run commands that
-   change the remote (`git push`, `git pull`) or that edit the repository
-   destructively: history rewriting (`git rebase`, `git reset --hard`),
-   low-level repository edits, or mass-adding files (`git add -A`,
-   `git add .`). Ask before creating branches.
+1. **Never modify the remote.** Commits are local. Reading the remote is fine
+   — `git fetch`, `git pull` — but never write to it: no `git push`, and
+   nothing else that changes it. Never edit the repository destructively
+   either: history rewriting (`git rebase`, `git reset --hard`), low-level
+   repository edits, or mass-adding files (`git add -A`, `git add .`). Ask
+   before creating branches.
 
-2. **Commit finished work; never push.** When a coherent change set is done and
+2. **Commit finished work, locally.** When a coherent change set is done and
    the checks below are clean, commit it: stage named paths, read
    `git status --short` and `git diff --cached --stat` first, and write a
-   message that explains why — the diff already says what. Then say what still
-   needs pushing and why it matters; the user publishes. Never bump the version
-   unasked.
+   message that explains why — the diff already says what. Then say what is
+   not yet pushed and why it matters; pushing is the user's alone. Never bump
+   the version unasked.
 
 3. **Test first, and verify by running.** Write the test for new behaviour or a
    reported bug before the code, and see it fail: a test that has never failed
