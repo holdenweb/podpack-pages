@@ -107,6 +107,7 @@ def write_manifest(export: Path, posts: list[dict[str, Any]]) -> None:
             "updated": None,
             "categories": [],
             "comment_count": 0,
+            "comment_pages": [],
             "thumbnail_url": None,
             **post,
         }

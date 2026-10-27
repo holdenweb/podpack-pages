@@ -114,16 +114,21 @@ it (`python -m blogscraper export`) as a tree of content-only fragments with a
 manifest. That tree is copied verbatim into this app's data directory:
 
 ```
-<data root>/blog/export/manifest.json          what is a post, with titles, dates, categories
+<data root>/blog/export/manifest.json          what is a post, with titles, dates, categories, comment pages
 <data root>/blog/export/posts/YYYY/MM/slug.html one fragment per post; the .html is kept on purpose
+<data root>/blog/export/posts/YYYY/MM/slug.comments/N.html  a post's comments, ten to a page
 <data root>/blog/export/images/<hash>.<ext>     harvested images
 ```
 
 The manifest is the contract (sitescraper ADR-0007). A request under the
 mount whose path the manifest lists is a **post**: the fragment's
 placeholders are filled in and it is wrapped in the site's chrome, titled
-from the manifest. Anything else that exists in the tree -- images, the
-manifest itself, a stray file -- is served exactly as stored, cached an hour.
+from the manifest. A **page of a post's comments**, listed under that post as
+`comment_pages`, is decorated the same way -- its links are placeholders too --
+with the post's dateline, titled "Comments on" the post and naming the page
+when there are several (sitescraper ADR-0014); it is never an index entry.
+Anything else that exists in the tree -- images, the manifest itself, a stray
+file -- is served exactly as stored, cached an hour.
 Nothing else is served; nothing is cached; the manifest is read on every
 request, so a freshly copied export is live the moment it lands.
 
@@ -131,13 +136,14 @@ request, so a freshly copied export is live the moment it lands.
 | --- | --- |
 | `/<mount>/` | every post, newest first, grouped by year, titled `[apps.blog] index_title` |
 | `/<mount>/posts/YYYY/MM/slug.html` | a post listed in the manifest, decorated |
+| `/<mount>/posts/YYYY/MM/slug.comments/N.html` | a page of a listed post's comments, decorated as the post is |
 | `/<mount>/<anything else on disk>` | served as stored |
 
-Every blog page, index and post alike, carries an "Archive" section nav: one
-link per year, newest first, to that year's heading on the index
-(`/<mount>/#2019` -- the headings carry those ids), the post's own year marked
-current. It is a `subnav` of the same shape as the pages kind's, laid out by
-the site's chrome (Templates, below).
+Every blog page -- the index, a post, a page of its comments -- carries an
+"Archive" section nav: one link per year, newest first, to that year's heading
+on the index (`/<mount>/#2019` -- the headings carry those ids), the post's own
+year marked current. It is a `subnav` of the same shape as the pages kind's,
+laid out by the site's chrome (Templates, below).
 
 Fragments are written before their site root is known: every URL into the
 tree is spelled `${{{ROOT}}}` (content) or `${{{IMAGE_ROOT}}}` (images), and
@@ -165,8 +171,9 @@ says so, and whose one link is a placeholder -- so a fresh install proves the
 whole chain. Copy the real export *mirroring* and the sample is gone; merge
 it and the sample lingers unlisted, served as stored if anyone types its URL.
 
-Comments, feeds and category pages are not built; the manifest carries
-what any of them would need. The archive is the index's year headings.
+Comment pages are the export's: it builds and lists them, and this app only
+decorates them. Feeds and category pages are not built; the manifest carries
+what either would need. The archive is the index's year headings.
 
 ## Installing on a site
 

@@ -1,8 +1,10 @@
-{#- The shipped default for a blog post. A site restyles it by shipping
-    templates/blog/blog-post.html (this app only) or
+{#- The shipped default for a blog post, and for each page of a post's
+    comments, which renders as its post does (sitescraper ADR-0014). A site
+    restyles it by shipping templates/blog/blog-post.html (this app only) or
     templates/podpack_pages/blog-post.html (every blog-kind app). In scope:
-    title, content (the published fragment), post (path, title, published_date,
-    updated, categories, original_url). -#}
+    title ("Comments on ..." for a comment page), content (the published
+    fragment), post (path, title, published_date, updated, categories,
+    original_url -- for a comment page, the post it belongs to). -#}
 {% extends "base.html" %}
 {% block content %}
 {%- if post.published_date or post.categories %}

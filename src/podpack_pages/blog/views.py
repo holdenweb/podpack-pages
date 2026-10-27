@@ -1,12 +1,13 @@
-"""Serving a sitescraper export: listed posts decorated, the rest as stored.
+"""Serving a sitescraper export: listed paths decorated, the rest as stored.
 
 Two routes, one rule. `/` is an index built from the manifest. Any other path
-is looked up in the manifest first: a listed path is a post, whose placeholders
-are filled with the mount the site actually gave this app and which is then
-wrapped in the site's chrome; anything else that exists in the export tree --
-an image, the manifest itself, a stray file -- is served exactly as stored
-(sitescraper ADR-0007). No relative-URL rewriting happens here: fragments
-carry absolute or placeholder URLs by contract, unlike the pages kind.
+is looked up in the manifest first: a listed path -- a post, or a page of the
+comments listed under one (sitescraper ADR-0014) -- has its placeholders filled
+with the mount the site actually gave this app and is then wrapped in the
+site's chrome; anything else that exists in the export tree -- an image, the
+manifest itself, a stray file -- is served exactly as stored (sitescraper
+ADR-0007). No relative-URL rewriting happens here: fragments carry absolute or
+placeholder URLs by contract, unlike the pages kind.
 
 The manifest is read on every request. That costs milliseconds and buys the
 property the host's refresh script promises for every app in this
@@ -25,7 +26,15 @@ from podpack.paths import data_dir
 
 from .. import chrome
 from ..content import ASSET_CACHE_CONTROL, ContentNotFound, find_asset
-from .manifest import EXPORT_TREE, Manifest, ManifestError, Post, load_manifest, read_post
+from .manifest import (
+    EXPORT_TREE,
+    CommentPage,
+    Manifest,
+    ManifestError,
+    Post,
+    load_manifest,
+    read_post,
+)
 from .publish import render_fragment
 
 logger = getLogger(__name__)
@@ -48,11 +57,15 @@ def index() -> ResponseReturnValue:
 
 @blueprint.route("/<path:path>")
 def page(path: str) -> ResponseReturnValue:
-    """A listed path is a post; anything else on disk is served as stored."""
+    """A listed path is a post or a page of its comments; anything else on
+    disk is served as stored."""
     manifest = _manifest()
     post = manifest.by_path.get(path)
     if post is not None:
-        return _decorate(post, manifest)
+        return _decorate(path, post.title, post, manifest)
+    comments = manifest.comment_pages.get(path)
+    if comments is not None:
+        return _decorate(path, _comments_title(comments), comments.post, manifest)
     try:
         body, ctype = find_asset(data_dir(), path, trees=(EXPORT_TREE,))
     except ContentNotFound:
@@ -76,32 +89,47 @@ def _manifest() -> Manifest:
         abort(503)
 
 
-def _decorate(post: Post, manifest: Manifest) -> ResponseReturnValue:
-    """Fill a post's placeholders with this app's mount and wrap it in chrome.
+def _decorate(path: str, title: str, post: Post, manifest: Manifest) -> ResponseReturnValue:
+    """Fill the placeholders of the fragment at `path` with this app's mount
+    and wrap it in chrome, as `post`.
+
+    `path` is the post's own, or that of a page of its comments. Such a page
+    renders exactly as its post does -- the same template with the post in
+    scope, so the dateline and the archive year are the post's -- and differs
+    only in its title.
 
     A placeholder the contract does not define raises out of `render_fragment`
-    and surfaces as a 500 with the post's path in the traceback -- loud on
+    and surfaces as a 500 with the fragment's path in the traceback -- loud on
     purpose, since nothing here can guess what an unknown placeholder meant.
     """
     try:
-        raw = read_post(data_dir(), post.path)
+        raw = read_post(data_dir(), path)
     except ContentNotFound:
         logger.warning(
             "manifest lists %s but %s is missing: the copy did not complete; "
             "copy the export again, mirroring it",
-            post.path,
-            data_dir() / EXPORT_TREE / post.path,
+            path,
+            data_dir() / EXPORT_TREE / path,
         )
         abort(404)
     root = _root()
-    html = render_fragment(raw, root, _image_root(root), source=post.path)
+    html = render_fragment(raw, root, _image_root(root), source=path)
     return chrome.render(
         "blog-post.html",
-        title=post.title,
+        title=title,
         content=html,
         post=post,
         subnav=_archive(manifest, current_year=post.year),
     )
+
+
+def _comments_title(comments: CommentPage) -> str:
+    """What a page of comments is called: after its post, the page named only
+    when there is more than one."""
+    title = f"Comments on {comments.post.title}"
+    if comments.pages > 1:
+        title = f"{title}, page {comments.number} of {comments.pages}"
+    return title
 
 
 def _root() -> str:

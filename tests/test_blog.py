@@ -7,9 +7,10 @@ contract: `.html` kept, placeholders in the bodies, membership decides.
 
 import logging
 from pathlib import Path
+from typing import Any
 
 import pytest
-from flask import Flask
+from flask import Flask, template_rendered
 
 from conftest import ALL_CONFIG, SiteFactory, write_manifest, write_post
 
@@ -21,6 +22,16 @@ POST = (
     ' <img src="${{{IMAGE_ROOT}}}/images/y.png"></p>'
 )
 SAMPLE = "posts/2026/01/welcome.html"  # the shipped sample export's one post
+# A comment page as the export writes it (sitescraper ADR-0012): page 1 of 2,
+# its navigation spelled with the same placeholder as a post's links.
+COMMENTS = (
+    '<div class="comments-page"><div class="comment"><p class="comment-meta">A</p>'
+    "<p>Hello.</p></div>"
+    '<p class="comment-nav">Page 1 of 2 · '
+    '<a href="${{{ROOT}}}/posts/2020/01/first.comments/2.html">Newer comments</a></p>'
+    '<p class="comment-back"><a href="${{{ROOT}}}/posts/2020/01/first.html">Back to post</a></p>'
+    "</div>"
+)
 
 
 def _site(site: SiteFactory, **changes: object) -> Flask:
@@ -95,6 +106,90 @@ def test_a_listed_post_is_decorated_with_the_sites_chrome(
     assert "<title>First</title>" in body
     assert "2 January 2020" in body and "python" in body  # the dateline
     assert "Served by podpack" in body  # extends base.html: the chrome wraps it
+
+
+def test_a_comment_page_is_decorated_like_its_post(family: Flask, blog_export: Path) -> None:
+    """Its links are placeholders like a post's, so served as stored they reach
+    the browser unfilled. Listed under its post, it is filled and wrapped as the
+    post is, the post's year current in the archive (sitescraper ADR-0014)."""
+    write_manifest(
+        blog_export,
+        [
+            {
+                "path": "posts/2020/01/first.html",
+                "title": "First",
+                "published": "2020-01-02T00:00:00",
+                "comment_pages": [
+                    "posts/2020/01/first.comments/1.html",
+                    "posts/2020/01/first.comments/2.html",
+                ],
+            },
+            {"path": "posts/2019/12/older.html", "published": "2019-12-31T00:00:00"},
+        ],
+    )
+    write_post(blog_export, "posts/2020/01/first.comments/1.html", COMMENTS)
+    contexts: list[dict[str, Any]] = []
+
+    def record(sender: Flask, template: Any, context: dict[str, Any], **extra: Any) -> None:
+        contexts.append(context)
+
+    with template_rendered.connected_to(record, family):
+        response = family.test_client().get("/blog/posts/2020/01/first.comments/1.html")
+    assert response.status_code == 200
+    body = response.get_data(as_text=True)
+    assert 'href="/blog/posts/2020/01/first.comments/2.html"' in body
+    assert 'href="/blog/posts/2020/01/first.html"' in body
+    assert "${{{" not in body
+    assert "Served by podpack" in body  # extends base.html: the chrome wraps it
+    archive = contexts[-1]["subnav"][0]["items"]
+    assert [item["label"] for item in archive if item["current"]] == ["2020"]
+
+
+def test_comment_pages_are_titled_from_their_post(family: Flask, blog_export: Path) -> None:
+    """A page's number is its place in the post's list, named only when there
+    is more than one."""
+    write_manifest(
+        blog_export,
+        [
+            {
+                "path": "posts/2020/01/long.html",
+                "title": "Long",
+                "comment_pages": [
+                    "posts/2020/01/long.comments/1.html",
+                    "posts/2020/01/long.comments/2.html",
+                ],
+            },
+            {
+                "path": "posts/2020/02/short.html",
+                "title": "Short",
+                "comment_pages": ["posts/2020/02/short.comments/1.html"],
+            },
+        ],
+    )
+    for listed in ("posts/2020/01/long.comments/2.html", "posts/2020/02/short.comments/1.html"):
+        write_post(blog_export, listed, "<p>comments</p>")
+    client = family.test_client()
+    long_page = client.get("/blog/posts/2020/01/long.comments/2.html").get_data(as_text=True)
+    assert "<title>Comments on Long, page 2 of 2</title>" in long_page
+    short_page = client.get("/blog/posts/2020/02/short.comments/1.html").get_data(as_text=True)
+    assert "<title>Comments on Short</title>" in short_page
+
+
+def test_comment_pages_stay_out_of_the_index(family: Flask, blog_export: Path) -> None:
+    """They belong to their post, which links to them; they are not posts."""
+    write_manifest(
+        blog_export,
+        [
+            {
+                "path": "posts/2020/01/first.html",
+                "title": "First",
+                "comment_pages": ["posts/2020/01/first.comments/1.html"],
+            }
+        ],
+    )
+    body = family.test_client().get("/blog/").get_data(as_text=True)
+    assert 'href="/blog/posts/2020/01/first.html"' in body
+    assert ".comments/" not in body
 
 
 def test_the_roots_follow_a_remount(site: SiteFactory) -> None:
@@ -212,6 +307,18 @@ BREAKAGES = [
         "traversal",
         '{"root_placeholder": "${{{ROOT}}}", "posts": [{"path": "../secret.txt"}]}',
         "steps outside",
+    ),
+    (
+        "comment page traversal",
+        '{"root_placeholder": "${{{ROOT}}}",'
+        ' "posts": [{"path": "posts/a.html", "comment_pages": ["../secret.txt"]}]}',
+        "steps outside",
+    ),
+    (
+        "comment pages not a list",
+        '{"root_placeholder": "${{{ROOT}}}",'
+        ' "posts": [{"path": "posts/a.html", "comment_pages": "x"}]}',
+        "comment_pages",
     ),
 ]
 
